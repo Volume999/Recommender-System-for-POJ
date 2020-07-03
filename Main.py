@@ -5,6 +5,7 @@ import statistics
 TOP_K = 30
 TOP_N = [1, 3, 5, 10, 15, 20]
 TEST_SAMPLE = [100, 200, 300, 400, 500, 600]
+SOLVE_REQUIREMENT = 5
 users = dict()
 similarity = dict()
 recommendations = dict()
@@ -126,8 +127,8 @@ def perform_test():
     recall_agg.append(recall)
     f1_agg.append(f1)
     print("Precision = {}, Recall = {}, F1 = {}, Count = {}".format(precision, recall, f1, count))
-    for i in recommendations:
-        print(i, len(recommendations[i]), recommendations[i])
+    # for i in recommendations:
+    #     print(i, len(recommendations[i]), recommendations[i])
 
 def preparation(TEST):
     global users, users_test, problems
@@ -157,7 +158,14 @@ def preparation(TEST):
                 users_test[User] = set()
             users_test[User].add(ProbId)
     # pprint.pprint(users_test)
-
+    delete_items = list()
+    for user in users.keys():
+        if user in users_test.keys():
+            if len(users[user]) < SOLVE_REQUIREMENT or len(users_test[user]) < SOLVE_REQUIREMENT:
+                delete_items.append(user)
+    for i in delete_items:
+        users.pop(i, 0)
+        users_test.pop(i, 0)
 
 for test in TEST_SAMPLE:
     print("Test_sample = {}".format(test))
