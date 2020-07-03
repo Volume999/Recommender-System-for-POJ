@@ -50,8 +50,12 @@ def build_similarity_matrix():
         for j in users:
             if i != j:
                 sim_value = intersection_length(users[i], users[j]) / union_length(users[i], users[j])
-                if sim_value != 1:
+                if not set(users[j]).issubset(users[i]) and sim_value != 0:
+                # if sim_value != 1:
                     similarity[i].append((j, sim_value))
+                    # print("Entry: {} {} {} {} {}".format(users[i], users[j], i, j, sim_value))
+                # else:
+                    # print("Subset: {} {} {}".format(users[i], users[j], sim_value))
     for i in similarity:
         similarity[i].sort(key=lambda a: a[1], reverse=True)
         # pprint.pprint(similarity[i])
@@ -112,14 +116,18 @@ def perform_test():
             precision += truePositive / len(recommendations[username].keys())
             recall += truePositive / len(problemsSolved)
     # print(precision, count)
-    precision /= count
-    recall /= count
-    f1 = 2 * precision * recall / (precision + recall)
+    if count != 0:
+        precision = precision / count
+        recall = recall / count
+        f1 = 2 * precision * recall / (precision + recall)
+    else:
+        precision = recall = f1 = 0
     p_agg.append(precision)
     recall_agg.append(recall)
     f1_agg.append(f1)
-    print("Precision = {}, Recall = {}, F1 = {}".format(precision, recall, f1))
-
+    print("Precision = {}, Recall = {}, F1 = {}, Count = {}".format(precision, recall, f1, count))
+    for i in recommendations:
+        print(i, len(recommendations[i]), recommendations[i])
 
 def preparation(TEST):
     global users, users_test, problems
