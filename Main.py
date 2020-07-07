@@ -5,6 +5,7 @@ import pandas as pd
 import statistics
 from CustomLib import CustomLib
 import math
+from collections import defaultdict
 
 
 class SimilarityStrategy:
@@ -22,11 +23,11 @@ class VotingStrategy:
     positional = 3
 
 
-TOP_K = 30
-TOP_N = [1, 3, 5]
-TEST_SAMPLE = [300, 400, 500]
+TOP_K = 200
+TOP_N = [5]
+TEST_SAMPLE = [450]
 SOLVE_REQUIREMENT = 5
-SIMILARITY_THRESHOLD_VALUE = 0
+SIMILARITY_THRESHOLD_VALUE = 30000
 EDGE_WEIGHT_THRESHOLD_VALUE = 0
 users = dict()
 users_projection_matrix = dict()
@@ -37,6 +38,32 @@ users_test = dict()
 f1_agg = list()
 recall_agg = list()
 p_agg = list()
+
+
+class WeightCalculator:
+    def __init__(self, strategy):
+        self.strategy = strategy
+
+    @staticmethod
+    def calc_simple_voting(user, similar_user, sim_value):
+        return 1
+
+    @staticmethod
+    def calc_weighted_voting(user, similar_user, sim_value):
+        return float(sim_value) / reduce(lambda acc, item: acc + item[1], similarity[user], 0)
+
+    @staticmethod
+    def calc_positional_voting(user, similar_user, sim_value):
+        return 1.0 / (similarity[user].index((similar_user, sim_value)) + 1)
+
+    def get_weight_value(self, user, similar_user, sim_value):
+        if self.strategy == VotingStrategy.simple:
+            return self.calc_simple_voting(user, similar_user, sim_value)
+        if self.strategy == VotingStrategy.weighted:
+            return self.calc_weighted_voting(user, similar_user, sim_value)
+        if self.strategy == VotingStrategy.positional:
+            return self.calc_positional_voting(user, similar_user, sim_value)
+        raise Exception("Not a viable voting strategy")
 
 
 class SimilarityCalculator:
@@ -115,8 +142,10 @@ class SimilarityCalculator:
         raise Exception("Not a viable strategy")
 
 
-similarity_strategy = SimilarityStrategy.edge_weight
+similarity_strategy = SimilarityStrategy.preferential
 similarity_calculator = SimilarityCalculator(similarity_strategy)
+voting_strategy = VotingStrategy.simple
+weight_calculator = WeightCalculator(voting_strategy)
 
 # users = dictionary, key - userID value = vector of problems accepted
 # similarity = dictionary, key - userID value - tuples of other userID and its similarity value
@@ -175,16 +204,17 @@ def build_recommendation_matrix(n):
     global recommendations
     for i in users.keys():
         if i not in recommendations.keys():
-            recommendations[i] = dict()
+            recommendations[i] = defaultdict(float)
         for (userID, simValue) in similarity[i]:
             for prob in users[userID]:
                 if prob not in users[i]:
-                    # print(i, userID, prob)
-                    if prob not in recommendations[i].keys():
-                        recommendations[i][prob] = simValue
-                    else:
-                        recommendations[i][prob] += simValue
-                    # print("{}: {} {}".format(i, prob, recommendations[i][prob]))
+                    recommendations[i][prob] += weight_calculator.get_weight_value(i, userID, simValue)
+        CustomLib.debug_print("Recommendations", i, recommendations[i], similarity[i])
+    # for i in users:
+    #     CustomLib.debug_print("Recommendations values test", i, similarity[i], recommendations[i])
+        # for (j, sim_value) in similarity[i]:
+        #     CustomLib.debug_print("Values in similarity", j, sorted(users[j]), sim_value)
+        # exit(0)
     for i in recommendations:
         temp = list(recommendations[i].items())
         temp.sort(key=lambda a: a[1], reverse=True)
