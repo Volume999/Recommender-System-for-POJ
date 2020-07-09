@@ -11,8 +11,9 @@ for test_sample in TEST_SAMPLE:
                                                                                     engine.similarity_strategy))
     for N in TOP_N:
         print("N = {}".format(N))
-        path = "/Users/citius/Desktop/Study/SeniorThesisWork/solvewaySubmissions2.csv"
+        path = "/Users/citius/Desktop/Study/SeniorThesisWork/solvewaySubmissions3.csv"
         engine.initialize_for_test(path, N, test_sample, test_solve_requirement)
+        engine.categorize_problems()
         engine.build_user_projection_matrix()
         engine.build_similarity_matrix()
         engine.build_recommendation_matrix()
