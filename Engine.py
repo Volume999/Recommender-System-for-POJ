@@ -41,8 +41,8 @@ class UserTypes:
 
 
 class SubmissionType:
-    solved_with_many = 1
-    solved_with_few = 2
+    solved_with_few = 1
+    solved_with_many = 2
     unsolved_with_many = 3
     unsolved_with_few = 4
 
@@ -102,7 +102,8 @@ class Engine:
             if user2 not in self.engine.users_projection_matrix[user1]:
                 return 0
             intersection_val = self.engine.users_projection_matrix[user1][user2]
-            union_val = CustomLib.union_length(self.engine.users[user1].problems_solved, self.engine.users[user2].problems_solved)
+            union_val = CustomLib.union_length(self.engine.users[user1].problems_solved,
+                                               self.engine.users[user2].problems_solved)
             ans = 0 if union_val == 0 else intersection_val / union_val
             # CustomLib.debug_print("Jaccard Problems Test", user1, user2, ans)
             return ans
@@ -236,7 +237,7 @@ class Engine:
             user = row[1][1]
             status = row[1][2]
             # print(tempProbId, tempUser, tempStatus)
-            if user in self.users.keys() and status == VerdictTypes.success:# and prob_id in self.problems:
+            if user in self.users.keys() and status == VerdictTypes.success:  # and prob_id in self.problems:
                 if user not in self.users_test.keys():
                     self.users_test[user] = set()
                 self.users_test[user].add(prob_id)
@@ -245,7 +246,8 @@ class Engine:
         # print(self.users_test)
         for user in self.users.keys():
             if user in self.users_test.keys():
-                if len(self.users[user].problems_solved) < solve_requirement or len(self.users_test[user]) < solve_requirement:
+                if len(self.users[user].problems_solved) < solve_requirement or len(
+                        self.users_test[user]) < solve_requirement:
                     delete_items.append(user)
             else:
                 # print(user)
@@ -257,17 +259,15 @@ class Engine:
 
     def categorize_problems(self):
         for prob in self.problems:
-            self.problems[prob].solved_threshold = 0 if len(self.problems[prob].attempts_before_success) == 0 else\
-                sum(self.problems[prob].attempts_before_success) /\
-                len(self.problems[prob].attempts_before_success)
-            self.problems[prob].unsolved_threshold = 0 if len(self.problems[prob].attempts_before_fail) == 0 else\
-                sum(self.problems[prob].attempts_before_fail) /\
-                len(self.problems[prob].attempts_before_fail)
+            self.problems[prob].solved_threshold = 0 if len(self.problems[prob].attempts_before_success) == 0 \
+                else statistics.mean(self.problems[prob].attempts_before_success)
+            self.problems[prob].unsolved_threshold = 0 if len(self.problems[prob].attempts_before_fail) == 0 \
+                else statistics.mean(self.problems[prob].attempts_before_fail)
             solved_with_many = len([val for val in self.problems[prob].attempts_before_success if
-                                    val >= self.problems[prob].solved_threshold])
+                                    val > self.problems[prob].solved_threshold])
             solved_with_little = len([val for val in self.problems[prob].attempts_before_success if
-                                    val < self.problems[prob].solved_threshold])
-            if len(self.problems[prob].attempts_before_success) >= 1:
+                                      val <= self.problems[prob].solved_threshold])
+            if len(self.problems[prob].attempts_before_success) > 1:
                 if solved_with_little >= 2 * solved_with_many:
                     self.problems[prob].problem_type = ProblemTypes.easy
                 elif solved_with_many >= 2 * solved_with_little:
@@ -287,9 +287,13 @@ class Engine:
                     self.users[user].submissions_stats[prob].submission_type = SubmissionType.unsolved_with_many
                 else:
                     self.users[user].submissions_stats[prob].submission_type = SubmissionType.unsolved_with_few
-            solved_with_many = len([val for val in self.users[user].problems_solved if self.users[user].submissions_stats[val].submission_type == SubmissionType.solved_with_many])
+            solved_with_many = len([val for val in self.users[user].problems_solved if
+                                    self.users[user].submissions_stats[
+                                        val].submission_type == SubmissionType.solved_with_many])
             # print([val for val in self.users[user].problems_solved])
-            solved_with_few = len([val for val in self.users[user].problems_solved if self.users[user].submissions_stats[val].submission_type == SubmissionType.solved_with_few])
+            solved_with_few = len([val for val in self.users[user].problems_solved if
+                                   self.users[user].submissions_stats[
+                                       val].submission_type == SubmissionType.solved_with_few])
             # CustomLib.debug_print("Submissions", user, solved_with_many, solved_with_few)
             if solved_with_many >= 2 * solved_with_few:
                 self.users[user].user_type = UserTypes.imprecise
@@ -298,13 +302,19 @@ class Engine:
             else:
                 self.users[user].user_type = UserTypes.variable
 
+    def manage_noise(self):
+        for user in self.users:
+            for prob in self.users[user].problems_solved:
+                if self.problems[prob].problem_type == self.users[user].user_type and self.problems[prob].problem_type != ProblemTypes.variable and self.users[user].user_type != UserTypes.variable:
+                    self.users[user].submissions_stats[prob].submission_type = self.users[user].user_type
+
     def build_user_projection_matrix(self):
-        # for prob in self.problems:
-        #     CustomLib.debug_print("Problems check", prob, self.problems[prob].attempts_before_success, self.problems[prob].attempts_before_fail, self.problems[prob].solved_threshold, self.problems[prob].unsolved_threshold, self.problems[prob].problem_type)
-        # for user in self.users:
-        #     CustomLib.debug_print("Users check", user, self.users[user].problems_solved, self.users[user].problems_unsolved, self.users[user].user_type)
-        #     for p in self.users[user].problems_solved:
-        #         CustomLib.debug_print("Users problems check", p, self.users[user].submissions_stats[p].attempts, self.users[user].submissions_stats[p].submission_type, self.problems[p].solved_threshold)
+        for prob in self.problems:
+            CustomLib.debug_print("Problems check", prob, self.problems[prob].attempts_before_success, self.problems[prob].attempts_before_fail, self.problems[prob].solved_threshold, self.problems[prob].unsolved_threshold, self.problems[prob].problem_type)
+        for user in self.users:
+            CustomLib.debug_print("Users check", user, self.users[user].problems_solved, self.users[user].problems_unsolved)
+            for p in self.users[user].problems_solved:
+                CustomLib.debug_print("Users problems check", p, self.users[user].submissions_stats[p].attempts, self.problems[p].solved_threshold, self.users[user].submissions_stats[p].submission_type, self.users[user].user_type, self.problems[p].problem_type)
         # print(self.users.keys())
         for i in self.users.keys():
             if i not in self.users_projection_matrix:
@@ -320,7 +330,7 @@ class Engine:
                     if edge_weight >= self.edge_weight_threshold:
                         self.users_projection_matrix[i][j] = edge_weight
         # pprint.pprint(self.users_projection_matrix)
-        # exit(0)
+        exit(0)
 
     def get_similarity_value(self, user1, user2):
         solutions = {
@@ -424,7 +434,8 @@ class Engine:
         self.p_agg.append(precision)
         self.recall_agg.append(recall)
         self.f1_agg.append(f1)
-        print("Precision = {}, Recall = {}, F1 = {}, One Hit = {}, Count = {}".format(precision, recall, f1, one_hit, count))
+        print("Precision = {}, Recall = {}, F1 = {}, One Hit = {}, Count = {}".format(precision, recall, f1, one_hit,
+                                                                                      count))
         # for i in recommendations:
         #     print(i, len(recommendations[i]), recommendations[i])
 
@@ -433,3 +444,11 @@ class Engine:
             statistics.mean(self.p_agg),
             statistics.mean(self.recall_agg),
             statistics.mean(self.f1_agg)))
+
+    def execute(self):
+        self.categorize_problems()
+        self.categorize_users()
+        self.manage_noise()
+        self.build_user_projection_matrix()
+        self.build_similarity_matrix()
+        self.build_recommendation_matrix()

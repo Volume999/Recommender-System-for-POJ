@@ -13,11 +13,7 @@ for test_sample in TEST_SAMPLE:
         print("N = {}".format(N))
         path = "/Users/citius/Desktop/Study/SeniorThesisWork/solvewaySubmissions3.csv"
         engine.initialize_for_test(path, N, test_sample, test_solve_requirement)
-        engine.categorize_problems()
-        engine.categorize_users()
-        engine.build_user_projection_matrix()
-        engine.build_similarity_matrix()
-        engine.build_recommendation_matrix()
+        engine.execute()
         engine.perform_test()
     engine.print_means()
     engine.full_clear()
