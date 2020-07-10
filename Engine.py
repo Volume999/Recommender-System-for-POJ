@@ -4,16 +4,16 @@ import statistics
 from collections import defaultdict
 from functools import reduce
 import pandas as pd
-
+from enum import Enum
 import CustomLib
 
 
-class VerdictTypes:
+class VerdictTypes(Enum):
     success = 1
     fail = 2
 
 
-class SimilarityStrategy:
+class SimilarityStrategy(Enum):
     edge_weight = 1
     common_neighbours = 2
     jaccard_neighbours = 3
@@ -22,25 +22,25 @@ class SimilarityStrategy:
     preferential = 6
 
 
-class VotingStrategy:
+class VotingStrategy(Enum):
     simple = 1
     weighted = 2
     positional = 3
 
 
-class ProblemTypes:
+class ProblemTypes(Enum):
     easy = 1
     difficult = 2
     variable = -1
 
 
-class UserTypes:
+class UserTypes(Enum):
     precise = 1
     imprecise = 2
     variable = -1
 
 
-class SubmissionType:
+class SubmissionType(Enum):
     solved_with_few = 1
     solved_with_many = 2
     unsolved_with_many = 3
@@ -215,16 +215,16 @@ class Engine:
             # print(tempProbId, tempUser, tempStatus)
             if user not in self.users.keys():
                 self.users[user] = self.User()
-            if status == VerdictTypes.success:
+            if status == VerdictTypes.success.value:
                 self.users[user].problems_solved.append(prob_id)
-            elif status == VerdictTypes.fail:
+            elif status == VerdictTypes.fail.value:
                 self.users[user].problems_unsolved.append(prob_id)
             self.users[user].submissions_stats[prob_id] = self.SubmissionStats(attempts=count)
             if prob_id not in self.problems:
                 self.problems[prob_id] = self.ProblemStats()
-            if status == VerdictTypes.success:
+            if status == VerdictTypes.success.value:
                 self.problems[prob_id].attempts_before_success.append(count)
-            elif status == VerdictTypes.fail:
+            elif status == VerdictTypes.fail.value:
                 self.problems[prob_id].attempts_before_fail.append(count)
         # for i in self.problems:
         #     CustomLib.debug_print("problems:", i, self.problems[i].users_success, self.problems[i].users_fail, self.problems[i].attempts_before_success, self.problems[i].attempts_before_fail)
@@ -237,7 +237,7 @@ class Engine:
             user = row[1][1]
             status = row[1][2]
             # print(tempProbId, tempUser, tempStatus)
-            if user in self.users.keys() and status == VerdictTypes.success:  # and prob_id in self.problems:
+            if user in self.users.keys() and status == VerdictTypes.success.value:  # and prob_id in self.problems:
                 if user not in self.users_test.keys():
                     self.users_test[user] = set()
                 self.users_test[user].add(prob_id)
@@ -305,16 +305,19 @@ class Engine:
     def manage_noise(self):
         for user in self.users:
             for prob in self.users[user].problems_solved:
-                if self.problems[prob].problem_type == self.users[user].user_type and self.problems[prob].problem_type != ProblemTypes.variable and self.users[user].user_type != UserTypes.variable:
-                    self.users[user].submissions_stats[prob].submission_type = self.users[user].user_type
+                if self.problems[prob].problem_type.value == self.users[user].user_type.value and self.problems[prob].problem_type != ProblemTypes.variable:
+                    self.users[user].submissions_stats[prob].submission_type = SubmissionType.solved_with_few \
+                        if self.users[user].user_type == UserTypes.precise \
+                        else SubmissionType.solved_with_many
+
 
     def build_user_projection_matrix(self):
-        for prob in self.problems:
-            CustomLib.debug_print("Problems check", prob, self.problems[prob].attempts_before_success, self.problems[prob].attempts_before_fail, self.problems[prob].solved_threshold, self.problems[prob].unsolved_threshold, self.problems[prob].problem_type)
-        for user in self.users:
-            CustomLib.debug_print("Users check", user, self.users[user].problems_solved, self.users[user].problems_unsolved)
-            for p in self.users[user].problems_solved:
-                CustomLib.debug_print("Users problems check", p, self.users[user].submissions_stats[p].attempts, self.problems[p].solved_threshold, self.users[user].submissions_stats[p].submission_type, self.users[user].user_type, self.problems[p].problem_type)
+        # for prob in self.problems:
+        #     CustomLib.debug_print("Problems check", prob, self.problems[prob].attempts_before_success, self.problems[prob].attempts_before_fail, self.problems[prob].solved_threshold, self.problems[prob].unsolved_threshold, self.problems[prob].problem_type)
+        # for user in self.users:
+        #     CustomLib.debug_print("Users check", user, self.users[user].problems_solved, self.users[user].problems_unsolved)
+        #     for p in self.users[user].problems_solved:
+        #         CustomLib.debug_print("Users problems check", p, self.users[user].submissions_stats[p].attempts, self.problems[p].solved_threshold, self.users[user].submissions_stats[p].submission_type, self.users[user].user_type, self.problems[p].problem_type)
         # print(self.users.keys())
         for i in self.users.keys():
             if i not in self.users_projection_matrix:
@@ -330,7 +333,7 @@ class Engine:
                     if edge_weight >= self.edge_weight_threshold:
                         self.users_projection_matrix[i][j] = edge_weight
         # pprint.pprint(self.users_projection_matrix)
-        exit(0)
+        # exit(0)
 
     def get_similarity_value(self, user1, user2):
         solutions = {

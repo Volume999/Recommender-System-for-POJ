@@ -7,8 +7,8 @@ test_solve_requirement = 5
 engine = Engine()
 for test_sample in TEST_SAMPLE:
     print("Test_sample = {}, voting strategy = {}, similarity strategy = {}".format(test_sample,
-                                                                                    engine.voting_strategy,
-                                                                                    engine.similarity_strategy))
+                                                                                    engine.voting_strategy.name,
+                                                                                    engine.similarity_strategy.name))
     for N in TOP_N:
         print("N = {}".format(N))
         path = "/Users/citius/Desktop/Study/SeniorThesisWork/solvewaySubmissions3.csv"
