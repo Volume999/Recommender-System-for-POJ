@@ -18,3 +18,8 @@ def debug_print(*args):
 
 def first_k_elements(lst, k):
     return [lst[j] for j in range(len(lst)) if j < k]
+
+
+def split_in_half(lst):
+    half = len(lst) // 2
+    return lst[:half], lst[half:]

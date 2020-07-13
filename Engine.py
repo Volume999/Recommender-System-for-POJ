@@ -1,11 +1,12 @@
 import math
-import pprint
+from pprint import pprint
 import statistics
 from collections import defaultdict
 from functools import reduce
 import pandas as pd
 from enum import Enum
 import CustomLib
+import random
 
 
 class VerdictTypes(Enum):
@@ -49,7 +50,6 @@ class SubmissionType(Enum):
 
 class Engine:
     class User:
-
         def __init__(self):
             self.problems_solved = list()
             self.problems_unsolved = list()
@@ -57,7 +57,6 @@ class Engine:
             self.user_type = UserTypes.variable
 
     class SubmissionStats:
-
         def __init__(self, attempts):
             self.attempts = attempts
             self.submission_type = 0
@@ -146,28 +145,25 @@ class Engine:
     recommendations = dict()
     problems = dict()
     users_test = dict()
-    f1_agg = list()
-    recall_agg = list()
-    p_agg = list()
     edge_weight_threshold = 3
     similarity_threshold = 0
-    test_solve_requirement = 5
     neighbourhood_size = 100
     recommendation_size = 10
     voting_strategy = VotingStrategy.simple
     similarity_strategy = SimilarityStrategy.preferential
+    path = str()
 
-    def __init__(self):
+    test_solve_requirement = 5
+    f1_agg = list()
+    recall_agg = list()
+    p_agg = list()
+    one_hit_agg = list()
+    mrr_agg = list()
+
+    def __init__(self, path=""):
+        self.path = path
         self.weight_calculator = self.WeightCalculator(self)
         self.similarity_calculator = self.SimilarityCalculator(self)
-
-    def clear(self):
-        self.users = dict()
-        self.users_projection_matrix = dict()
-        self.similarity = dict()
-        self.recommendations = dict()
-        self.problems = dict()
-        self.users_test = dict()
 
     def full_clear(self):
         self.users = dict()
@@ -180,29 +176,10 @@ class Engine:
         self.recall_agg = list()
         self.p_agg = list()
 
-    def initialize(self, path, recommendation_size):
-        self.recommendation_size = recommendation_size
-        df = pd.read_csv(path,
-                         header=0,
-                         names=['id', 'user', 'status'])
-        # print(df)
-        for row in df.iterrows():
-            prob_id = row[1][0]
-            user = row[1][1]
-            status = row[1][2]
-            # print(tempProbId, tempUser, tempStatus)
-            if status == 1:
-                if user not in self.users.keys():
-                    self.users[user] = list()
-                self.users[user].append(prob_id)
-                self.problems[prob_id] = self.ProblemStats()
-
-    def initialize_for_test(self, path, recommendation_size, test_size, solve_requirement):
-        self.clear()
-        self.recommendation_size = recommendation_size
+    def initialize(self):
+        self.full_clear()
         # CustomLib.debug_print("initialize test", path, test_size, solve_requirement)
-        df = pd.read_csv(path,
-                         nrows=test_size,
+        df = pd.read_csv(self.path,
                          header=0,
                          names=['id', 'user', 'status', 'count'])
         # print(df)
@@ -220,42 +197,29 @@ class Engine:
             elif status == VerdictTypes.fail.value:
                 self.users[user].problems_unsolved.append(prob_id)
             self.users[user].submissions_stats[prob_id] = self.SubmissionStats(attempts=count)
+
             if prob_id not in self.problems:
                 self.problems[prob_id] = self.ProblemStats()
             if status == VerdictTypes.success.value:
                 self.problems[prob_id].attempts_before_success.append(count)
             elif status == VerdictTypes.fail.value:
                 self.problems[prob_id].attempts_before_fail.append(count)
-        # for i in self.problems:
-        #     CustomLib.debug_print("problems:", i, self.problems[i].users_success, self.problems[i].users_fail, self.problems[i].attempts_before_success, self.problems[i].attempts_before_fail)
-        # exit(0)
-        df = pd.read_csv(path, skiprows=test_size,
-                         header=0, names=['id', 'user', 'status', 'count'])
-        # print(df)
-        for row in df.iterrows():
-            prob_id = row[1][0]
-            user = row[1][1]
-            status = row[1][2]
-            # print(tempProbId, tempUser, tempStatus)
-            if user in self.users.keys() and status == VerdictTypes.success.value:  # and prob_id in self.problems:
-                if user not in self.users_test.keys():
-                    self.users_test[user] = set()
-                self.users_test[user].add(prob_id)
-        # pprint.pprint(self.users_test)
-        delete_items = list()
-        # print(self.users_test)
-        for user in self.users.keys():
-            if user in self.users_test.keys():
-                if len(self.users[user].problems_solved) < solve_requirement or len(
-                        self.users_test[user]) < solve_requirement:
-                    delete_items.append(user)
-            else:
-                # print(user)
-                delete_items.append(user)
-        for i in delete_items:
-            self.users.pop(i, 0)
-            if i in self.users_test:
-                self.users_test.pop(i, 0)
+
+    def initialize_tests(self):
+        delete_users = list()
+        for user in self.users:
+            if len(self.users[user].problems_solved) < self.test_solve_requirement * 2:
+                delete_users.append(user)
+        for user in delete_users:
+            self.users.pop(user)
+        for user in self.users:
+            self.users_test[user] = set()
+            # CustomLib.debug_print("before splitting", self.users[user].problems_solved, self.users[user].problems_unsolved, self.users[user].submissions_stats.keys())
+            random.shuffle(self.users[user].problems_solved)
+            self.users[user].problems_solved, self.users_test[user] = CustomLib.split_in_half(self.users[user].problems_solved)
+            for prob in self.users_test[user]:
+                self.users[user].submissions_stats.pop(prob)
+            # CustomLib.debug_print("splitting test", self.users[user].problems_solved, self.users_test[user], self.users[user].submissions_stats.keys())
 
     def categorize_problems(self):
         for prob in self.problems:
@@ -405,9 +369,10 @@ class Engine:
         recall = 0
         count = 0
         one_hit = 0
+        mrr = 0
         for (username, problemsSolved) in self.users_test.items():
             if username in self.recommendations.keys() and len(self.recommendations[username].keys()) > 0:
-                # CustomLib.debug_print("Test Candidate", username, self.users[username], self.recommendations[username], problemsSolved)
+                # CustomLib.debug_print("Test Candidate", username, self.users[username].problems_solved, self.recommendations[username], problemsSolved)
                 # if CustomLib.intersection(recommendations[username].keys(), problemsSolved) != len(problemsSolved):
                 #     CustomLib.debug_print("Testing Solution", sorted(recommendations[username].keys()), sorted(problemsSolved))
                 count += 1
@@ -427,6 +392,17 @@ class Engine:
                 #     for a in self.users_projection_matrix[username].keys():
                 #         CustomLib.debug_print("candidate", a, self.users[a])
         # print(precision, count)
+        for user in self.recommendations:
+            mrr = 0
+            for i in range(len(self.recommendations[user].keys())):
+                prob = list(self.recommendations[user].keys())[i]
+                if prob in self.users_test[user]:
+                    mrr = 1 / (i + 1)
+                    break
+            # if mrr != 1:
+            #     CustomLib.debug_print("Checking mrr", user, self.recommendations[user], self.users_test[user], mrr)
+            # exit(0)
+            self.mrr_agg.append(mrr)
         if count != 0:
             precision = precision / count
             recall = recall / count
@@ -437,16 +413,20 @@ class Engine:
         self.p_agg.append(precision)
         self.recall_agg.append(recall)
         self.f1_agg.append(f1)
-        print("Precision = {}, Recall = {}, F1 = {}, One Hit = {}, Count = {}".format(precision, recall, f1, one_hit,
-                                                                                      count))
+        self.one_hit_agg.append(one_hit)
+        # print("Precision = {}, Recall = {}, F1 = {}, One Hit = {}, Count = {}".format(precision, recall, f1, one_hit,
+        #                                                                               count))
         # for i in recommendations:
         #     print(i, len(recommendations[i]), recommendations[i])
 
     def print_means(self):
-        print("Precision: {}\nRecall: {}\nF1: {}".format(
+        print("Precision: {}\nRecall: {}\nF1: {}\nOneHit: {}\nMRR: {}".format(
             statistics.mean(self.p_agg),
             statistics.mean(self.recall_agg),
-            statistics.mean(self.f1_agg)))
+            statistics.mean(self.f1_agg),
+            statistics.mean(self.one_hit_agg),
+            statistics.mean(self.mrr_agg)
+        ))
 
     def execute(self):
         self.categorize_problems()
@@ -455,3 +435,15 @@ class Engine:
         self.build_user_projection_matrix()
         self.build_similarity_matrix()
         self.build_recommendation_matrix()
+
+    def run(self):
+        self.initialize()
+        self.execute()
+
+    def test(self):
+        for i in range(10):
+            self.initialize()
+            self.initialize_tests()
+            self.execute()
+            self.perform_test()
+        self.print_means()

@@ -1,19 +1,11 @@
 from Engine import Engine
 
-TOP_N = [3, 5, 7, 10, 20]
-TEST_SAMPLE = [200, 300, 400, 500, 600]
-test_solve_requirement = 5
+TOP_N = [1, 3, 5, 7, 10, 20]
+test_solve_requirement = 3
 
-engine = Engine()
-for test_sample in TEST_SAMPLE:
-    print("Test_sample = {}, voting strategy = {}, similarity strategy = {}".format(test_sample,
-                                                                                    engine.voting_strategy.name,
-                                                                                    engine.similarity_strategy.name))
-    for N in TOP_N:
-        print("N = {}".format(N))
-        path = "/Users/citius/Desktop/Study/SeniorThesisWork/solvewaySubmissions3.csv"
-        engine.initialize_for_test(path, N, test_sample, test_solve_requirement)
-        engine.execute()
-        engine.perform_test()
-    engine.print_means()
-    engine.full_clear()
+engine = Engine(path="/Users/citius/Desktop/Study/SeniorThesisWork/solvewaySubmissions3.csv")
+engine.test_solve_requirement = test_solve_requirement
+for N in TOP_N:
+    print("N = {}".format(N))
+    engine.recommendation_size = N
+    engine.test()
