@@ -78,81 +78,102 @@ class Engine:
             return 1
 
         def calc_weighted_voting(self, user, similar_user, sim_value):
-            return float(sim_value) / reduce(lambda acc, item: acc + item[1], self.engine.similarity[user], 0)
+            return float(sim_value) / reduce(lambda acc, item: acc + item[1], self.engine.data.similarity[user], 0)
 
         def calc_positional_voting(self, user, similar_user, sim_value):
-            return 1.0 / (self.engine.similarity[user].index((similar_user, sim_value)) + 1)
+            # CustomLib.debug_print("Testing voting", user, similar_user,
+            # self.engine.similarity[user], 1.0 /
+            # (self.engine.similarity[user].index((similar_user, sim_value)) + 1))
+            # exit(0)
+            return 1.0 / (self.engine.data.similarity[user].index((similar_user, sim_value)) + 1)
 
     class SimilarityCalculator:
         def __init__(self, engine):
             self.engine = engine
 
         def calc_jaccard_neighbours(self, user1, user2):
-            user1_neighbours = self.engine.users_projection_matrix[user1].keys()
-            user2_neighbours = self.engine.users_projection_matrix[user2].keys()
+            user1_neighbours = self.engine.data.users_projection_matrix[user1].keys()
+            user2_neighbours = self.engine.data.users_projection_matrix[user2].keys()
             intersection_val = CustomLib.intersection_length(user1_neighbours, user2_neighbours)
             union_val = CustomLib.union_length(user1_neighbours, user2_neighbours)
             ans = 0 if union_val == 0 else intersection_val / union_val
             # if ans != 0.9354838709677419:
-            #     CustomLib.debug_print("Jaccard Neighbours Test", user1, self.users[user1], users_projection_matrix[user1], user2, self.users[user2], users_projection_matrix[user2], intersection_val, union_val, ans)
+            #     CustomLib.debug_print("Jaccard Neighbours Test",
+            #     user1, self.users[user1],
+            #     users_projection_matrix[user1],
+            #     user2, self.users[user2],
+            #     users_projection_matrix[user2],
+            #     intersection_val,
+            #     union_val,
+            #     ans)
             return ans
 
         def calc_jaccard_problems(self, user1, user2):
-            if user2 not in self.engine.users_projection_matrix[user1]:
+            if user2 not in self.engine.data.users_projection_matrix[user1]:
                 return 0
-            intersection_val = self.engine.users_projection_matrix[user1][user2]
-            union_val = CustomLib.union_length(self.engine.users[user1].problems_solved,
-                                               self.engine.users[user2].problems_solved)
+            intersection_val = self.engine.data.users_projection_matrix[user1][user2]
+            union_val = CustomLib.union_length(self.engine.data.users[user1].problems_solved,
+                                               self.engine.data.users[user2].problems_solved)
             ans = 0 if union_val == 0 else intersection_val / union_val
             # CustomLib.debug_print("Jaccard Problems Test", user1, user2, ans)
             return ans
 
         def calc_edge_weight(self, user1, user2):
-            return 0 if user2 not in self.engine.users_projection_matrix[user1].keys() \
-                else self.engine.users_projection_matrix[user1][user2]
+            return 0 if user2 not in self.engine.data.users_projection_matrix[user1].keys() \
+                else self.engine.data.users_projection_matrix[user1][user2]
 
         def calc_common_neighbours(self, user1, user2):
-            intersection = CustomLib.intersection(self.engine.users_projection_matrix[user1],
-                                                  self.engine.users_projection_matrix[user2])
-            ans = reduce(lambda acc, user: acc + self.engine.users_projection_matrix[user1][user] +
-                                           self.engine.users_projection_matrix[user2][user], intersection, 0)
+            intersection = CustomLib.intersection(self.engine.data.users_projection_matrix[user1],
+                                                  self.engine.data.users_projection_matrix[user2])
+            ans = reduce(lambda acc, user: acc + self.engine.data.users_projection_matrix[user1][user] +
+                                           self.engine.data.users_projection_matrix[user2][user], intersection, 0)
             return ans
 
         def calc_adar_atamic(self, user1, user2):
-            user1_neighbourhood = self.engine.users_projection_matrix[user1]
-            user2_neighbourhood = self.engine.users_projection_matrix[user2]
+            user1_neighbourhood = self.engine.data.users_projection_matrix[user1]
+            user2_neighbourhood = self.engine.data.users_projection_matrix[user2]
             intersection = CustomLib.intersection(user1_neighbourhood,
                                                   user2_neighbourhood)
             ans = reduce(lambda acc, user: acc + (user1_neighbourhood[user] + user2_neighbourhood[user])
                                            / math.log(1 + reduce(lambda acc2, i: acc2 + i,
-                                                                 self.engine.users_projection_matrix[user].values(),
+                                                                 self.engine.data.users_projection_matrix[
+                                                                     user].values(),
                                                                  0)
                                                       ),
                          intersection,
                          0)
-            # CustomLib.debug_print("Adar Atamic Testing", user1, users[user1], users_projection_matrix[user1], user2, users[user2], users_projection_matrix[user2], intersection, ans)
+            # CustomLib.debug_print("Adar Atamic Testing", user1, users[user1],
+            # users_projection_matrix[user1], user2, users[user2],
+            # users_projection_matrix[user2], intersection, ans)
             return ans
 
         def calc_preferential(self, user1, user2):
-            ans = reduce(lambda acc, i: acc + i, self.engine.users_projection_matrix[user1].values(), 0) * \
-                  reduce(lambda acc, i: acc + i, self.engine.users_projection_matrix[user2].values(), 0)
-            # CustomLib.debug_print("Preferential Strategy Test", user1, users[user1], users_projection_matrix[user1], user2, users[user2], users_projection_matrix[user2], ans)
+            ans = reduce(lambda acc, i: acc + i, self.engine.data.users_projection_matrix[user1].values(), 0) * \
+                  reduce(lambda acc, i: acc + i, self.engine.data.users_projection_matrix[user2].values(), 0)
+            # CustomLib.debug_print("Preferential Strategy Test", user1,
+            # users[user1], users_projection_matrix[user1], user2, users[user2],
+            # users_projection_matrix[user2], ans)
             return ans
 
-    users = dict()
-    users_projection_matrix = dict()
-    similarity = dict()
-    recommendations = dict()
-    problems = dict()
-    users_test = dict()
-    edge_weight_threshold = 3
-    similarity_threshold = 0
-    neighbourhood_size = 100
-    recommendation_size = 10
-    voting_strategy = VotingStrategy.simple
-    similarity_strategy = SimilarityStrategy.preferential
-    path = str()
+    class Variables:
+        edge_weight_threshold = 3
+        similarity_threshold = 0
+        neighbourhood_size = 50
+        recommendation_size = 10
+        voting_strategy = VotingStrategy.simple
+        similarity_strategy = SimilarityStrategy.preferential
+        path = str()
 
+    class Data:
+        def __init__(self):
+            self.path = str()
+            self.users = dict()
+            self.users_projection_matrix = dict()
+            self.similarity = dict()
+            self.recommendations = dict()
+            self.problems = dict()
+
+    users_test = dict()
     test_solve_requirement = 5
     f1_agg = list()
     recall_agg = list()
@@ -161,17 +182,15 @@ class Engine:
     mrr_agg = list()
 
     def __init__(self, path=""):
-        self.path = path
         self.weight_calculator = self.WeightCalculator(self)
         self.similarity_calculator = self.SimilarityCalculator(self)
+        self.data = self.Data()
+        self.Variables.path = path
+        self.data.path = path
 
     def full_clear(self):
-        self.users = dict()
-        self.users_projection_matrix = dict()
-        self.similarity = dict()
-        self.recommendations = dict()
-        self.problems = dict()
-        self.users_test = dict()
+        self.data = self.Data()
+        self.data.path = self.Variables.path
         self.f1_agg = list()
         self.recall_agg = list()
         self.p_agg = list()
@@ -179,7 +198,7 @@ class Engine:
     def initialize(self):
         self.full_clear()
         # CustomLib.debug_print("initialize test", path, test_size, solve_requirement)
-        df = pd.read_csv(self.path,
+        df = pd.read_csv(self.data.path,
                          header=0,
                          names=['id', 'user', 'status', 'count'])
         # print(df)
@@ -190,112 +209,134 @@ class Engine:
             status = row[1][2]
             count = row[1][3]
             # print(tempProbId, tempUser, tempStatus)
-            if user not in self.users.keys():
-                self.users[user] = self.User()
-            if status == VerdictTypes.success.value:
-                self.users[user].problems_solved.append(prob_id)
-            elif status == VerdictTypes.fail.value:
-                self.users[user].problems_unsolved.append(prob_id)
-            self.users[user].submissions_stats[prob_id] = self.SubmissionStats(attempts=count)
+            if count < 100:
+                if user not in self.data.users.keys():
+                    self.data.users[user] = self.User()
+                if status == VerdictTypes.success.value:
+                    self.data.users[user].problems_solved.append(prob_id)
+                elif status == VerdictTypes.fail.value:
+                    self.data.users[user].problems_unsolved.append(prob_id)
+                self.data.users[user].submissions_stats[prob_id] = self.SubmissionStats(attempts=count)
 
-            if prob_id not in self.problems:
-                self.problems[prob_id] = self.ProblemStats()
-            if status == VerdictTypes.success.value:
-                self.problems[prob_id].attempts_before_success.append(count)
-            elif status == VerdictTypes.fail.value:
-                self.problems[prob_id].attempts_before_fail.append(count)
+                if prob_id not in self.data.problems:
+                    self.data.problems[prob_id] = self.ProblemStats()
+                if status == VerdictTypes.success.value:
+                    self.data.problems[prob_id].attempts_before_success.append(count)
+                elif status == VerdictTypes.fail.value:
+                    self.data.problems[prob_id].attempts_before_fail.append(count)
 
     def initialize_tests(self):
         delete_users = list()
-        for user in self.users:
-            if len(self.users[user].problems_solved) < self.test_solve_requirement * 2:
+        for user in self.data.users:
+            if len(self.data.users[user].problems_solved) < self.test_solve_requirement * 2:
                 delete_users.append(user)
         for user in delete_users:
-            self.users.pop(user)
-        for user in self.users:
+            self.data.users.pop(user)
+        for user in self.data.users:
             self.users_test[user] = set()
-            # CustomLib.debug_print("before splitting", self.users[user].problems_solved, self.users[user].problems_unsolved, self.users[user].submissions_stats.keys())
-            random.shuffle(self.users[user].problems_solved)
-            self.users[user].problems_solved, self.users_test[user] = CustomLib.split_in_half(self.users[user].problems_solved)
+            # CustomLib.debug_print("before splitting",
+            # self.users[user].problems_solved,
+            # self.users[user].problems_unsolved,
+            # self.users[user].submissions_stats.keys())
+            random.shuffle(self.data.users[user].problems_solved)
+            self.data.users[user].problems_solved, self.users_test[user] = CustomLib.split_in_half(
+                self.data.users[user].problems_solved)
             for prob in self.users_test[user]:
-                self.users[user].submissions_stats.pop(prob)
-            # CustomLib.debug_print("splitting test", self.users[user].problems_solved, self.users_test[user], self.users[user].submissions_stats.keys())
+                self.data.users[user].submissions_stats.pop(prob)
+            # CustomLib.debug_print("splitting test",
+            # self.users[user].problems_solved,
+            # self.users_test[user], self.users[user].submissions_stats.keys())
 
     def categorize_problems(self):
-        for prob in self.problems:
-            self.problems[prob].solved_threshold = 0 if len(self.problems[prob].attempts_before_success) == 0 \
-                else statistics.mean(self.problems[prob].attempts_before_success)
-            self.problems[prob].unsolved_threshold = 0 if len(self.problems[prob].attempts_before_fail) == 0 \
-                else statistics.mean(self.problems[prob].attempts_before_fail)
-            solved_with_many = len([val for val in self.problems[prob].attempts_before_success if
-                                    val > self.problems[prob].solved_threshold])
-            solved_with_little = len([val for val in self.problems[prob].attempts_before_success if
-                                      val <= self.problems[prob].solved_threshold])
-            if len(self.problems[prob].attempts_before_success) > 1:
+        for prob in self.data.problems:
+            self.data.problems[prob].solved_threshold = 0 if len(self.data.problems[prob].attempts_before_success) == 0 \
+                else statistics.mean(self.data.problems[prob].attempts_before_success)
+            self.data.problems[prob].unsolved_threshold = 0 if len(self.data.problems[prob].attempts_before_fail) == 0 \
+                else statistics.mean(self.data.problems[prob].attempts_before_fail)
+            solved_with_many = len([val for val in self.data.problems[prob].attempts_before_success if
+                                    val > self.data.problems[prob].solved_threshold])
+            solved_with_little = len([val for val in self.data.problems[prob].attempts_before_success if
+                                      val <= self.data.problems[prob].solved_threshold])
+            if len(self.data.problems[prob].attempts_before_success) > 1:
                 if solved_with_little >= 2 * solved_with_many:
-                    self.problems[prob].problem_type = ProblemTypes.easy
+                    self.data.problems[prob].problem_type = ProblemTypes.easy
                 elif solved_with_many >= 2 * solved_with_little:
-                    self.problems[prob].problem_type = ProblemTypes.difficult
+                    self.data.problems[prob].problem_type = ProblemTypes.difficult
                 else:
-                    self.problems[prob].problem_type = ProblemTypes.variable
+                    self.data.problems[prob].problem_type = ProblemTypes.variable
 
     def categorize_users(self):
-        for user in self.users:
-            for prob in self.users[user].problems_solved:
-                if self.users[user].submissions_stats[prob].attempts >= self.problems[prob].solved_threshold:
-                    self.users[user].submissions_stats[prob].submission_type = SubmissionType.solved_with_many
+        for user in self.data.users:
+            for prob in self.data.users[user].problems_solved:
+                if self.data.users[user].submissions_stats[prob].attempts >= self.data.problems[prob].solved_threshold:
+                    self.data.users[user].submissions_stats[prob].submission_type = SubmissionType.solved_with_many
                 else:
-                    self.users[user].submissions_stats[prob].submission_type = SubmissionType.solved_with_few
-            for prob in self.users[user].problems_unsolved:
-                if self.users[user].submissions_stats[prob].attempts >= self.problems[prob].unsolved_threshold:
-                    self.users[user].submissions_stats[prob].submission_type = SubmissionType.unsolved_with_many
+                    self.data.users[user].submissions_stats[prob].submission_type = SubmissionType.solved_with_few
+            for prob in self.data.users[user].problems_unsolved:
+                if self.data.users[user].submissions_stats[prob].attempts >= self.data.problems[
+                    prob].unsolved_threshold:
+                    self.data.users[user].submissions_stats[prob].submission_type = SubmissionType.unsolved_with_many
                 else:
-                    self.users[user].submissions_stats[prob].submission_type = SubmissionType.unsolved_with_few
-            solved_with_many = len([val for val in self.users[user].problems_solved if
-                                    self.users[user].submissions_stats[
+                    self.data.users[user].submissions_stats[prob].submission_type = SubmissionType.unsolved_with_few
+            solved_with_many = len([val for val in self.data.users[user].problems_solved if
+                                    self.data.users[user].submissions_stats[
                                         val].submission_type == SubmissionType.solved_with_many])
             # print([val for val in self.users[user].problems_solved])
-            solved_with_few = len([val for val in self.users[user].problems_solved if
-                                   self.users[user].submissions_stats[
+            solved_with_few = len([val for val in self.data.users[user].problems_solved if
+                                   self.data.users[user].submissions_stats[
                                        val].submission_type == SubmissionType.solved_with_few])
             # CustomLib.debug_print("Submissions", user, solved_with_many, solved_with_few)
             if solved_with_many >= 2 * solved_with_few:
-                self.users[user].user_type = UserTypes.imprecise
+                self.data.users[user].user_type = UserTypes.imprecise
             elif solved_with_few >= 2 * solved_with_many:
-                self.users[user].user_type = UserTypes.precise
+                self.data.users[user].user_type = UserTypes.precise
             else:
-                self.users[user].user_type = UserTypes.variable
+                self.data.users[user].user_type = UserTypes.variable
 
     def manage_noise(self):
-        for user in self.users:
-            for prob in self.users[user].problems_solved:
-                if self.problems[prob].problem_type.value == self.users[user].user_type.value and self.problems[prob].problem_type != ProblemTypes.variable:
-                    self.users[user].submissions_stats[prob].submission_type = SubmissionType.solved_with_few \
-                        if self.users[user].user_type == UserTypes.precise \
+        for user in self.data.users:
+            for prob in self.data.users[user].problems_solved:
+                if self.data.problems[prob].problem_type.value == self.data.users[user].user_type.value \
+                        and self.data.problems[prob].problem_type != ProblemTypes.variable:
+                    self.data.users[user].submissions_stats[prob].submission_type = SubmissionType.solved_with_few \
+                        if self.data.users[user].user_type == UserTypes.precise \
                         else SubmissionType.solved_with_many
-
 
     def build_user_projection_matrix(self):
         # for prob in self.problems:
-        #     CustomLib.debug_print("Problems check", prob, self.problems[prob].attempts_before_success, self.problems[prob].attempts_before_fail, self.problems[prob].solved_threshold, self.problems[prob].unsolved_threshold, self.problems[prob].problem_type)
+        #     CustomLib.debug_print("Problems check",
+        #     prob, self.problems[prob].attempts_before_success,
+        #     self.problems[prob].attempts_before_fail,
+        #     self.problems[prob].solved_threshold,
+        #     self.problems[prob].unsolved_threshold,
+        #     self.problems[prob].problem_type)
         # for user in self.users:
-        #     CustomLib.debug_print("Users check", user, self.users[user].problems_solved, self.users[user].problems_unsolved)
+        #     CustomLib.debug_print("Users check",
+        #     user, self.users[user].problems_solved,
+        #     self.users[user].problems_unsolved)
         #     for p in self.users[user].problems_solved:
-        #         CustomLib.debug_print("Users problems check", p, self.users[user].submissions_stats[p].attempts, self.problems[p].solved_threshold, self.users[user].submissions_stats[p].submission_type, self.users[user].user_type, self.problems[p].problem_type)
+        #         CustomLib.debug_print("Users problems check",
+        #         p,
+        #         self.users[user].submissions_stats[p].attempts,
+        #         self.problems[p].solved_threshold,
+        #         self.users[user].submissions_stats[p].submission_type,
+        #         self.users[user].user_type, self.problems[p].problem_type)
         # print(self.users.keys())
-        for i in self.users.keys():
-            if i not in self.users_projection_matrix:
-                self.users_projection_matrix[i] = dict()
-            for j in self.users:
+        for i in self.data.users.keys():
+            if i not in self.data.users_projection_matrix:
+                self.data.users_projection_matrix[i] = dict()
+            for j in self.data.users:
                 if i != j:
-                    # CustomLib.debug_print("user projection matrix", self.users[i].problems_solved, self.users[j].problems_solved)
-                    # edge_weight = CustomLib.intersection_length(self.users[i].problems_solved, self.users[j].problems_solved)
-                    edge_weight = len([val for val in self.users[i].submissions_stats
-                                       if val in self.users[j].submissions_stats
-                                       and self.users[i].submissions_stats[val].submission_type
-                                       == self.users[j].submissions_stats[val].submission_type])
-                    if edge_weight >= self.edge_weight_threshold:
-                        self.users_projection_matrix[i][j] = edge_weight
+                    # CustomLib.debug_print("user projection matrix",
+                    # self.users[i].problems_solved, self.users[j].problems_solved)
+                    # edge_weight = CustomLib.intersection_length(self.users[i].problems_solved,
+                    # self.users[j].problems_solved)
+                    edge_weight = len([val for val in self.data.users[i].submissions_stats
+                                       if val in self.data.users[j].submissions_stats
+                                       and self.data.users[i].submissions_stats[val].submission_type
+                                       == self.data.users[j].submissions_stats[val].submission_type])
+                    if edge_weight >= self.Variables.edge_weight_threshold:
+                        self.data.users_projection_matrix[i][j] = edge_weight
         # pprint.pprint(self.users_projection_matrix)
         # exit(0)
 
@@ -308,27 +349,28 @@ class Engine:
             SimilarityStrategy.edge_weight: self.similarity_calculator.calc_edge_weight,
             SimilarityStrategy.adar_adamic: self.similarity_calculator.calc_adar_atamic
         }
-        if self.similarity_strategy not in solutions:
+        if self.Variables.similarity_strategy not in solutions:
             raise Exception("Not a viable strategy")
-        return solutions[self.similarity_strategy](user1, user2)
+        return solutions[self.Variables.similarity_strategy](user1, user2)
 
     def build_similarity_matrix(self):
-        for i in self.users:
-            if i not in self.similarity.keys():
-                self.similarity[i] = list()
-            for j in self.users:
+        for i in self.data.users:
+            if i not in self.data.similarity.keys():
+                self.data.similarity[i] = list()
+            for j in self.data.users:
                 if i != j:
                     sim_value = self.get_similarity_value(i, j)
-                    # print("Entry: {} {} {} {} {}".format(self.users[i], self.users[j], i, j, sim_value))
-                    if not set(self.users[j].problems_solved).issubset(self.users[i].problems_solved) \
-                            and sim_value > self.similarity_threshold:
-                        self.similarity[i].append((j, sim_value))
+                    # print("Entry: {} {} {} {} {}".format(self.data.users[i].problems_solved,
+                    # self.data.users[j].problems_solved, i, j, sim_value))
+                    if not set(self.data.users[j].problems_solved).issubset(self.data.users[i].problems_solved) \
+                            and sim_value > self.Variables.similarity_threshold:
+                        self.data.similarity[i].append((j, sim_value))
                     # else:
                     # print("Subset: {} {} {}".format(self.users[i], self.users[j], sim_value))
-        for i in self.similarity:
-            self.similarity[i].sort(key=lambda a: a[1], reverse=True)
-            # pprint.pprint(self.similarity[i])
-            self.similarity[i] = CustomLib.first_k_elements(self.similarity[i], self.neighbourhood_size)
+        for i in self.data.similarity:
+            self.data.similarity[i].sort(key=lambda a: a[1], reverse=True)
+            self.data.similarity[i] = CustomLib.first_k_elements(self.data.similarity[i],
+                                                                 self.Variables.neighbourhood_size)
             # [similarity[i][j] for j in range(len(similarity[i])) if j < TOP_K]
 
     def get_weight_value(self, user, similar_user, sim_value):
@@ -337,65 +379,85 @@ class Engine:
             VotingStrategy.weighted: self.weight_calculator.calc_weighted_voting,
             VotingStrategy.positional: self.weight_calculator.calc_positional_voting
         }
-        if self.voting_strategy not in solutions:
+        if self.Variables.voting_strategy not in solutions:
             raise Exception("Not a viable voting strategy")
-        return solutions[self.voting_strategy](user, similar_user, sim_value)
+        return solutions[self.Variables.voting_strategy](user, similar_user, sim_value)
 
     def build_recommendation_matrix(self):
-        for i in self.users.keys():
-            if i not in self.recommendations.keys():
-                self.recommendations[i] = defaultdict(float)
-            for (userID, simValue) in self.similarity[i]:
-                for prob in self.users[userID].problems_solved:
-                    if prob not in self.users[i].problems_solved:
-                        self.recommendations[i][prob] += self.get_weight_value(i, userID, simValue)
-            # CustomLib.debug_print("Recommendations", i, self.recommendations[i], self.similarity[i])
+        for i in self.data.users.keys():
+            if i not in self.data.recommendations.keys():
+                self.data.recommendations[i] = defaultdict(float)
+            for (userID, simValue) in self.data.similarity[i]:
+                voting_weight = self.get_weight_value(i, userID, simValue)
+                for prob in self.data.users[userID].problems_solved:
+                    if prob not in self.data.users[i].problems_solved:
+                        self.data.recommendations[i][prob] += voting_weight
+            #     CustomLib.debug_print("data.recommendations",
+            #                           i,
+            #                           userID,
+            #                           self.data.users[i].problems_solved,
+            #                           self.data.users[i].problems_unsolved,
+            #                           self.data.users[userID].problems_solved,
+            #                           self.data.users[userID].problems_unsolved,
+            #                           simValue,
+            #                           self.get_weight_value(i, userID, simValue)
+            #                           )
+            # exit(0)
         # for i in self.users:
-        #     CustomLib.debug_print("Recommendations values test", i, self.similarity[i], recommendations[i])
+        #     CustomLib.debug_print("data.recommendations values test", i, self.similarity[i], recommendations[i])
         # for (j, sim_value) in self.similarity[i]:
         #     CustomLib.debug_print("Values in self.similarity", j, sorted(self.users[j]), sim_value)
         # exit(0)
-        for i in self.recommendations:
-            temp = list(self.recommendations[i].items())
+        for i in self.data.recommendations:
+            temp = list(self.data.recommendations[i].items())
             temp.sort(key=lambda a: a[1], reverse=True)
-            temp = CustomLib.first_k_elements(temp, self.recommendation_size)
+            temp = CustomLib.first_k_elements(temp, self.Variables.recommendation_size)
             # print("{}: {}".format(i, temp))
-            self.recommendations[i] = dict()
+            self.data.recommendations[i] = dict()
             for (prob, count) in temp:
-                self.recommendations[i][prob] = count
+                self.data.recommendations[i][prob] = count
+            # CustomLib.debug_print("Recommendations", i, sorted(list(self.recommendations[i].keys())))
+            # exit(0)
 
     def perform_test(self):
         precision = 0
         recall = 0
         count = 0
         one_hit = 0
-        mrr = 0
         for (username, problemsSolved) in self.users_test.items():
-            if username in self.recommendations.keys() and len(self.recommendations[username].keys()) > 0:
-                # CustomLib.debug_print("Test Candidate", username, self.users[username].problems_solved, self.recommendations[username], problemsSolved)
+            if username in self.data.recommendations.keys() and len(self.data.recommendations[username].keys()) > 0:
+                # CustomLib.debug_print("Test Candidate", username,
+                # self.users[username].problems_solved,
+                # self.recommendations[username], problemsSolved)
                 # if CustomLib.intersection(recommendations[username].keys(), problemsSolved) != len(problemsSolved):
-                #     CustomLib.debug_print("Testing Solution", sorted(recommendations[username].keys()), sorted(problemsSolved))
+                #     CustomLib.debug_print("Testing Solution",
+                #     sorted(recommendations[username].keys()),
+                #     sorted(problemsSolved))
                 count += 1
                 true_positive = 0
                 # print(recommendations[username].keys())
                 # print("{} : {} - {}".format(username, recommendations[username], problemsSolved))
                 for probId in problemsSolved:
-                    if probId in self.recommendations[username].keys():
+                    if probId in self.data.recommendations[username].keys():
                         # print(username, probId)
                         true_positive += 1
-                precision += true_positive / len(self.recommendations[username].keys())
+                precision += true_positive / len(self.data.recommendations[username].keys())
                 recall += true_positive / len(problemsSolved)
                 if true_positive > 0:
                     one_hit += 1
                 # else:
-                #     CustomLib.debug_print("one_hit", username, self.users[username], self.users_projection_matrix[username], self.similarity[username], self.recommendations[username])
+                #     CustomLib.debug_print("one_hit",
+                #     username, self.users[username],
+                #     self.users_projection_matrix[username],
+                #     self.similarity[username],
+                #     self.recommendations[username])
                 #     for a in self.users_projection_matrix[username].keys():
                 #         CustomLib.debug_print("candidate", a, self.users[a])
         # print(precision, count)
-        for user in self.recommendations:
+        for user in self.data.recommendations:
             mrr = 0
-            for i in range(len(self.recommendations[user].keys())):
-                prob = list(self.recommendations[user].keys())[i]
+            for i in range(len(self.data.recommendations[user].keys())):
+                prob = list(self.data.recommendations[user].keys())[i]
                 if prob in self.users_test[user]:
                     mrr = 1 / (i + 1)
                     break
@@ -441,9 +503,14 @@ class Engine:
         self.execute()
 
     def test(self):
-        for i in range(10):
-            self.initialize()
-            self.initialize_tests()
-            self.execute()
-            self.perform_test()
-        self.print_means()
+        for similarity in SimilarityStrategy:
+            for voting in VotingStrategy:
+                self.Variables.similarity_strategy = similarity
+                self.Variables.voting_strategy = voting
+                print("Similarity = {}, Voting = {}".format(self.Variables.similarity_strategy, self.Variables.voting_strategy))
+                for i in range(30):
+                    self.initialize()
+                    self.initialize_tests()
+                    self.execute()
+                    self.perform_test()
+                self.print_means()
