@@ -112,8 +112,8 @@ class Engine:
             if user2 not in self.engine.data.users_projection_matrix[user1]:
                 return 0
             intersection_val = self.engine.data.users_projection_matrix[user1][user2]
-            union_val = CustomLib.union_length(self.engine.data.users[user1].problems_solved,
-                                               self.engine.data.users[user2].problems_solved)
+            union_val = CustomLib.union_length(self.engine.data.users[user1].problems_solved + self.engine.data.users[user1].problems_unsolved,
+                                               self.engine.data.users[user2].problems_solved + self.engine.data.users[user2].problems_unsolved)
             ans = 0 if union_val == 0 else intersection_val / union_val
             # CustomLib.debug_print("Jaccard Problems Test", user1, user2, ans)
             return ans
@@ -173,13 +173,105 @@ class Engine:
             self.recommendations = dict()
             self.problems = dict()
 
-    users_test = dict()
-    test_solve_requirement = 5
-    f1_agg = list()
-    recall_agg = list()
-    p_agg = list()
-    one_hit_agg = list()
-    mrr_agg = list()
+    class Testing:
+        test_solve_requirement = 3
+
+        def __init__(self, engine):
+            self.engine = engine
+            self.users_test = dict()
+            self.f1_agg = list()
+            self.recall_agg = list()
+            self.p_agg = list()
+            self.one_hit_agg = list()
+            self.mrr_agg = list()
+
+        def clear_aggregates(self):
+            self.f1_agg = list()
+            self.recall_agg = list()
+            self.p_agg = list()
+            self.one_hit_agg = list()
+            self.mrr_agg = list()
+
+        def clear_users_test(self):
+            self.users_test = dict()
+
+        def perform_test(self):
+            precision = 0
+            recall = 0
+            count = 0
+            one_hit = 0
+            for (username, problemsSolved) in self.users_test.items():
+                if username in self.engine.data.recommendations.keys() and len(
+                        self.engine.data.recommendations[username].keys()) > 0:
+                    # CustomLib.debug_print("Test Candidate", username,
+                    # self.users[username].problems_solved,
+                    # self.recommendations[username], problemsSolved)
+                    # if CustomLib.intersection(recommendations[username].keys(),
+                    # problemsSolved) != len(problemsSolved):
+                    #     CustomLib.debug_print("Testing Solution",
+                    #     sorted(recommendations[username].keys()),
+                    #     sorted(problemsSolved))
+                    count += 1
+                    true_positive = 0
+                    # print(recommendations[username].keys())
+                    # print("{} : {} - {}".format(username, recommendations[username], problemsSolved))
+                    for probId in problemsSolved:
+                        if probId in self.engine.data.recommendations[username].keys():
+                            # print(username, probId)
+                            true_positive += 1
+                    precision += true_positive / len(self.engine.data.recommendations[username].keys())
+                    recall += true_positive / len(problemsSolved)
+                    if true_positive > 0:
+                        one_hit += 1
+                    # else:
+                    #     CustomLib.debug_print("one_hit",
+                    #     username, self.users[username],
+                    #     self.users_projection_matrix[username],
+                    #     self.similarity[username],
+                    #     self.recommendations[username])
+                    #     for a in self.users_projection_matrix[username].keys():
+                    #         CustomLib.debug_print("candidate", a, self.users[a])
+            # print(precision, count)
+            mrr_list = list()
+            for user in self.engine.data.recommendations:
+                for i in range(len(self.engine.data.recommendations[user].keys())):
+                    prob = list(self.engine.data.recommendations[user].keys())[i]
+                    if prob in self.users_test[user]:
+                        mrr_list.append(1 / (i + 1))
+                        break
+                # if mrr != 1:
+                #     CustomLib.debug_print("Checking mrr", user, self.recommendations[user], self.users_test[user], mrr)
+                # exit(0)
+            mrr = statistics.mean(mrr_list)
+            if count != 0:
+                precision = precision / count
+                recall = recall / count
+                f1 = 2 * precision * recall / (precision + recall)
+                one_hit = one_hit / count
+            else:
+                precision = recall = f1 = 0
+            # CustomLib.debug_print("asd", precision, recall, f1, one_hit, count)
+            # exit()
+            self.p_agg.append(precision)
+            self.recall_agg.append(recall)
+            self.f1_agg.append(f1)
+            self.one_hit_agg.append(one_hit)
+            self.mrr_agg.append(mrr)
+            # print("Precision = {}, Recall = {}, F1 = {}, One Hit = {}, Count = {}".format(precision, recall, f1, one_hit,
+            #                                                                               count))
+            # for i in recommendations:
+            #     print(i, len(recommendations[i]), recommendations[i])
+
+        def print_means(self):
+            CustomLib.debug_print("testing", len(self.p_agg), len(self.recall_agg), len(self.f1_agg), len(self.one_hit_agg), len(self.mrr_agg))
+            # exit()
+            print("Precision: {}\nRecall: {}\nF1: {}\nOneHit: {}\nMRR: {}".format(
+                statistics.mean(self.p_agg),
+                statistics.mean(self.recall_agg),
+                statistics.mean(self.f1_agg),
+                statistics.mean(self.one_hit_agg),
+                statistics.mean(self.mrr_agg)
+            ))
 
     def __init__(self, path=""):
         self.weight_calculator = self.WeightCalculator(self)
@@ -187,16 +279,15 @@ class Engine:
         self.data = self.Data()
         self.Variables.path = path
         self.data.path = path
+        self.testing = self.Testing(self)
 
-    def full_clear(self):
+    def clear_data(self):
         self.data = self.Data()
+        self.testing.clear_users_test()
         self.data.path = self.Variables.path
-        self.f1_agg = list()
-        self.recall_agg = list()
-        self.p_agg = list()
 
     def initialize(self):
-        self.full_clear()
+        self.clear_data()
         # CustomLib.debug_print("initialize test", path, test_size, solve_requirement)
         df = pd.read_csv(self.data.path,
                          header=0,
@@ -228,20 +319,20 @@ class Engine:
     def initialize_tests(self):
         delete_users = list()
         for user in self.data.users:
-            if len(self.data.users[user].problems_solved) < self.test_solve_requirement * 2:
+            if len(self.data.users[user].problems_solved) < self.testing.test_solve_requirement * 2:
                 delete_users.append(user)
         for user in delete_users:
             self.data.users.pop(user)
         for user in self.data.users:
-            self.users_test[user] = set()
+            self.testing.users_test[user] = set()
             # CustomLib.debug_print("before splitting",
             # self.users[user].problems_solved,
             # self.users[user].problems_unsolved,
             # self.users[user].submissions_stats.keys())
             random.shuffle(self.data.users[user].problems_solved)
-            self.data.users[user].problems_solved, self.users_test[user] = CustomLib.split_in_half(
+            self.data.users[user].problems_solved, self.testing.users_test[user] = CustomLib.split_in_half(
                 self.data.users[user].problems_solved)
-            for prob in self.users_test[user]:
+            for prob in self.testing.users_test[user]:
                 self.data.users[user].submissions_stats.pop(prob)
             # CustomLib.debug_print("splitting test",
             # self.users[user].problems_solved,
@@ -419,77 +510,6 @@ class Engine:
             # CustomLib.debug_print("Recommendations", i, sorted(list(self.recommendations[i].keys())))
             # exit(0)
 
-    def perform_test(self):
-        precision = 0
-        recall = 0
-        count = 0
-        one_hit = 0
-        for (username, problemsSolved) in self.users_test.items():
-            if username in self.data.recommendations.keys() and len(self.data.recommendations[username].keys()) > 0:
-                # CustomLib.debug_print("Test Candidate", username,
-                # self.users[username].problems_solved,
-                # self.recommendations[username], problemsSolved)
-                # if CustomLib.intersection(recommendations[username].keys(), problemsSolved) != len(problemsSolved):
-                #     CustomLib.debug_print("Testing Solution",
-                #     sorted(recommendations[username].keys()),
-                #     sorted(problemsSolved))
-                count += 1
-                true_positive = 0
-                # print(recommendations[username].keys())
-                # print("{} : {} - {}".format(username, recommendations[username], problemsSolved))
-                for probId in problemsSolved:
-                    if probId in self.data.recommendations[username].keys():
-                        # print(username, probId)
-                        true_positive += 1
-                precision += true_positive / len(self.data.recommendations[username].keys())
-                recall += true_positive / len(problemsSolved)
-                if true_positive > 0:
-                    one_hit += 1
-                # else:
-                #     CustomLib.debug_print("one_hit",
-                #     username, self.users[username],
-                #     self.users_projection_matrix[username],
-                #     self.similarity[username],
-                #     self.recommendations[username])
-                #     for a in self.users_projection_matrix[username].keys():
-                #         CustomLib.debug_print("candidate", a, self.users[a])
-        # print(precision, count)
-        for user in self.data.recommendations:
-            mrr = 0
-            for i in range(len(self.data.recommendations[user].keys())):
-                prob = list(self.data.recommendations[user].keys())[i]
-                if prob in self.users_test[user]:
-                    mrr = 1 / (i + 1)
-                    break
-            # if mrr != 1:
-            #     CustomLib.debug_print("Checking mrr", user, self.recommendations[user], self.users_test[user], mrr)
-            # exit(0)
-            self.mrr_agg.append(mrr)
-        if count != 0:
-            precision = precision / count
-            recall = recall / count
-            f1 = 2 * precision * recall / (precision + recall)
-            one_hit = one_hit / count
-        else:
-            precision = recall = f1 = 0
-        self.p_agg.append(precision)
-        self.recall_agg.append(recall)
-        self.f1_agg.append(f1)
-        self.one_hit_agg.append(one_hit)
-        # print("Precision = {}, Recall = {}, F1 = {}, One Hit = {}, Count = {}".format(precision, recall, f1, one_hit,
-        #                                                                               count))
-        # for i in recommendations:
-        #     print(i, len(recommendations[i]), recommendations[i])
-
-    def print_means(self):
-        print("Precision: {}\nRecall: {}\nF1: {}\nOneHit: {}\nMRR: {}".format(
-            statistics.mean(self.p_agg),
-            statistics.mean(self.recall_agg),
-            statistics.mean(self.f1_agg),
-            statistics.mean(self.one_hit_agg),
-            statistics.mean(self.mrr_agg)
-        ))
-
     def execute(self):
         self.categorize_problems()
         self.categorize_users()
@@ -503,14 +523,30 @@ class Engine:
         self.execute()
 
     def test(self):
-        for similarity in SimilarityStrategy:
-            for voting in VotingStrategy:
-                self.Variables.similarity_strategy = similarity
-                self.Variables.voting_strategy = voting
-                print("Similarity = {}, Voting = {}".format(self.Variables.similarity_strategy, self.Variables.voting_strategy))
-                for i in range(30):
-                    self.initialize()
-                    self.initialize_tests()
-                    self.execute()
-                    self.perform_test()
-                self.print_means()
+        full_test = False
+        if full_test:
+            for similarity in SimilarityStrategy:
+                for voting in VotingStrategy:
+                    self.Variables.similarity_strategy = similarity
+                    self.Variables.voting_strategy = voting
+                    print("Similarity = {}, Voting = {}".format(self.Variables.similarity_strategy,
+                                                                self.Variables.voting_strategy))
+                    self.testing.clear_aggregates()
+                    for i in range(30):
+                        self.initialize()
+                        self.initialize_tests()
+                        self.execute()
+                        self.testing.perform_test()
+                    self.testing.print_means()
+        else:
+            self.Variables.similarity_strategy = SimilarityStrategy.jaccard_problems
+            self.Variables.voting_strategy = VotingStrategy.simple
+            print("Similarity = {}, Voting = {}".format(self.Variables.similarity_strategy,
+                                                        self.Variables.voting_strategy))
+            self.testing.clear_aggregates()
+            for i in range(30):
+                self.initialize()
+                self.initialize_tests()
+                self.execute()
+                self.testing.perform_test()
+            self.testing.print_means()
