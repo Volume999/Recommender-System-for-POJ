@@ -230,42 +230,47 @@ class Engine:
                 else:
                     self.data.problems[prob].problem_type = ProblemTypes.variable
 
+    def categorize_user(self, user):
+        for prob in user.problems_solved:
+            if user.submissions_stats[prob].attempts >= self.data.problems[prob].solved_threshold:
+                user.submissions_stats[prob].submission_type = SubmissionType.solved_with_many
+            else:
+                user.submissions_stats[prob].submission_type = SubmissionType.solved_with_few
+        for prob in user.problems_unsolved:
+            if user.submissions_stats[prob].attempts >= self.data.problems[prob].unsolved_threshold:
+                user.submissions_stats[prob].submission_type = SubmissionType.unsolved_with_many
+            else:
+                user.submissions_stats[prob].submission_type = SubmissionType.unsolved_with_few
+        solved_with_many = len([val for val in user.problems_solved if
+                                user.submissions_stats[
+                                    val].submission_type == SubmissionType.solved_with_many])
+        # print([val for val in self.users[user].problems_solved])
+        solved_with_few = len([val for val in user.problems_solved if
+                               user.submissions_stats[
+                                   val].submission_type == SubmissionType.solved_with_few])
+        # CustomLib.debug_print("Submissions", user, solved_with_many, solved_with_few)
+        if solved_with_many >= 2 * solved_with_few:
+            user.user_type = UserTypes.imprecise
+        elif solved_with_few >= 2 * solved_with_many:
+            user.user_type = UserTypes.precise
+        else:
+            user.user_type = UserTypes.variable
+
     def categorize_users(self):
         for user in self.data.users:
-            for prob in self.data.users[user].problems_solved:
-                if self.data.users[user].submissions_stats[prob].attempts >= self.data.problems[prob].solved_threshold:
-                    self.data.users[user].submissions_stats[prob].submission_type = SubmissionType.solved_with_many
-                else:
-                    self.data.users[user].submissions_stats[prob].submission_type = SubmissionType.solved_with_few
-            for prob in self.data.users[user].problems_unsolved:
-                if self.data.users[user].submissions_stats[prob].attempts >= self.data.problems[
-                    prob].unsolved_threshold:
-                    self.data.users[user].submissions_stats[prob].submission_type = SubmissionType.unsolved_with_many
-                else:
-                    self.data.users[user].submissions_stats[prob].submission_type = SubmissionType.unsolved_with_few
-            solved_with_many = len([val for val in self.data.users[user].problems_solved if
-                                    self.data.users[user].submissions_stats[
-                                        val].submission_type == SubmissionType.solved_with_many])
-            # print([val for val in self.users[user].problems_solved])
-            solved_with_few = len([val for val in self.data.users[user].problems_solved if
-                                   self.data.users[user].submissions_stats[
-                                       val].submission_type == SubmissionType.solved_with_few])
-            # CustomLib.debug_print("Submissions", user, solved_with_many, solved_with_few)
-            if solved_with_many >= 2 * solved_with_few:
-                self.data.users[user].user_type = UserTypes.imprecise
-            elif solved_with_few >= 2 * solved_with_many:
-                self.data.users[user].user_type = UserTypes.precise
-            else:
-                self.data.users[user].user_type = UserTypes.variable
+            self.categorize_user(self.data.users[user])
 
-    def manage_noise(self):
+    def manage_noise_user(self, user):
+        for prob in user.problems_solved:
+            if self.data.problems[prob].problem_type.value == user.user_type.value \
+                    and self.data.problems[prob].problem_type != ProblemTypes.variable:
+                user.submissions_stats[prob].submission_type = SubmissionType.solved_with_few \
+                    if user.user_type == UserTypes.precise \
+                    else SubmissionType.solved_with_many
+
+    def manage_noise_users(self):
         for user in self.data.users:
-            for prob in self.data.users[user].problems_solved:
-                if self.data.problems[prob].problem_type.value == self.data.users[user].user_type.value \
-                        and self.data.problems[prob].problem_type != ProblemTypes.variable:
-                    self.data.users[user].submissions_stats[prob].submission_type = SubmissionType.solved_with_few \
-                        if self.data.users[user].user_type == UserTypes.precise \
-                        else SubmissionType.solved_with_many
+            self.manage_noise_user(self.data.users[user])
 
     def get_user_projections(self, user):
         ans = dict()
@@ -280,7 +285,7 @@ class Engine:
                     ans[user2] = edge_weight
         return ans
 
-    def build_user_projection_matrix(self):
+    def build_user_projections(self):
         for i in self.data.users.keys():
             self.data.users[i].projections = self.get_user_projections(self.data.users[i])
 
@@ -312,7 +317,7 @@ class Engine:
         # CustomLib.debug_print("SimilaritiesCheck", ans)
         return ans
 
-    def build_similarity_matrix(self):
+    def build_similarities(self):
         for i in self.data.users:
             # CustomLib.debug_print("Projections", i, self.data.users[i].projections)
             self.data.users[i].similarities = self.get_user_similarities(self.data.users[i])
@@ -344,26 +349,48 @@ class Engine:
 
         return ans
 
-    def build_recommendation_matrix(self):
+    def build_recommendations(self):
         for i in self.data.users.keys():
             # CustomLib.debug_print("Similarities test", i, self.data.users[i].similarities)
             self.data.users[i].recommendations = self.get_user_recommendations(self.data.users[i])
             # CustomLib.debug_print("Recommendations check", i, self.data.users[i].recommendations)
 
+    def execute_for_user(self, user_data):
+        user = self.User()
+        for (pid, status, count) in user_data:
+            if pid in self.data.problems:
+                (user.problems_solved if status == 1 else user.problems_unsolved).append(pid)
+                user.submissions_stats[pid] = self.SubmissionStats(attempts=count)
+        self.categorize_user(user)
+        self.manage_noise_user(user)
+        user.projections = self.get_user_projections(user)
+        user.similarities = self.get_user_similarities(user)
+        user.recommendations = self.get_user_recommendations(user)
+        print(list(user.recommendations.keys()))
+        # CustomLib.debug_print("Executing for user",
+        #                       user_data,
+        #                       user.problems_solved,
+        #                       user.problems_unsolved,
+        #                       user.submissions_stats,
+        #                       user.projections,
+        #                       user.similarities,
+        #                       user.recommendations)
+                              # self.data.users)
+
     def execute(self):
         self.categorize_problems()
         self.categorize_users()
-        self.manage_noise()
-        self.build_user_projection_matrix()
-        self.build_similarity_matrix()
-        self.build_recommendation_matrix()
+        self.manage_noise_users()
+        self.build_user_projections()
+        self.build_similarities()
+        self.build_recommendations()
 
     def run(self):
         self.initialize()
         self.execute()
 
     def test(self):
-        full_test = True
+        full_test = False
         if full_test:
             for similarity in SimilarityStrategy:
                 for voting in VotingStrategy:
