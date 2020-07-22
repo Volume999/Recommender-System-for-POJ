@@ -19,6 +19,7 @@ class WeightCalculator:
     def calc_positional_voting(user, similar_user, sim_value):
         return 1.0 / (user.similarities.index((similar_user, sim_value)) + 1)
 
+
 class SimilarityCalculator:
     @staticmethod
     def calc_jaccard_neighbours(user1, user2):
