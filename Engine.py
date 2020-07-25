@@ -14,14 +14,12 @@ import csv
 
 
 def timeit(f):
-
     def timed(*args, **kw):
-
         ts = time.time()
         result = f(*args, **kw)
         te = time.time()
 
-        print('func:{} args:[{}, {}] took: {} sec'.format(f.__name__, args, kw, te-ts))
+        print('func:{} args:[{}, {}] took: {} sec'.format(f.__name__, args, kw, te - ts))
         return result
 
     return timed
@@ -91,12 +89,13 @@ class Engine:
             self.problem_type = ProblemTypes.variable
 
     class Variables:
-        edge_weight_threshold = 0
+        edge_weight_threshold = 10
         similarity_threshold = 0
-        neighbourhood_size = 200
+        neighbourhood_size = 100
         recommendation_size = 10
         voting_strategy = VotingStrategy.simple
         similarity_strategy = SimilarityStrategy.adar_adamic
+        user_solve_requirements = 5
         path = str()
 
     class Data:
@@ -106,7 +105,7 @@ class Engine:
             self.problems = dict()
 
     class Testing:
-        test_solve_requirement = 10
+        test_solve_requirement = 5
 
         def __init__(self, engine):
             self.engine = engine
@@ -127,7 +126,7 @@ class Engine:
         def clear_users_test(self):
             self.users_test = dict()
 
-        @timeit
+        # @timeit
         def perform_test(self):
             precision = 0
             recall = 0
@@ -168,23 +167,25 @@ class Engine:
             self.mrr_agg.append(mrr)
 
         def print_means(self):
-            with open(file='Stats.csv', mode='a') as file:
+            with open(file='Stats3.csv', mode='a') as file:
                 writer = csv.writer(file)
                 writer.writerow([self.test_solve_requirement,
-                                self.engine.Variables.recommendation_size,
-                                self.engine.Variables.similarity_strategy,
-                                self.engine.Variables.voting_strategy,
-                                self.p_agg, self.recall_agg,
-                                self.f1_agg,
-                                self.one_hit_agg,
-                                self.mrr_agg])
-            print("Precision: {}\nRecall: {}\nF1: {}\nOneHit: {}\nMRR: {}".format(
-                statistics.mean(self.p_agg),
-                statistics.mean(self.recall_agg),
-                statistics.mean(self.f1_agg),
-                statistics.mean(self.one_hit_agg),
-                statistics.mean(self.mrr_agg)
-            ))
+                                 self.engine.Variables.recommendation_size,
+                                 self.engine.Variables.similarity_strategy,
+                                 self.engine.Variables.voting_strategy,
+                                 self.engine.Variables.edge_weight_threshold,
+                                 self.p_agg,
+                                 self.recall_agg,
+                                 self.f1_agg,
+                                 self.one_hit_agg,
+                                 self.mrr_agg])
+            # print("Precision: {}\nRecall: {}\nF1: {}\nOneHit: {}\nMRR: {}".format(
+            #     statistics.mean(self.p_agg),
+            #     statistics.mean(self.recall_agg),
+            #     statistics.mean(self.f1_agg),
+            #     statistics.mean(self.one_hit_agg),
+            #     statistics.mean(self.mrr_agg)
+            # ))
 
     def __init__(self, path=""):
         self.data = self.Data()
@@ -197,7 +198,7 @@ class Engine:
         self.testing.clear_users_test()
         self.data.path = self.Variables.path
 
-    @timeit
+    # @timeit
     def initialize(self):
         self.clear_data()
         df = pd.read_csv(self.data.path,
@@ -226,7 +227,7 @@ class Engine:
                     self.data.problems[prob_id].attempts_before_fail.append(count)
         delete_users = list()
         for user in self.data.users:
-            if len(self.data.users[user].problems_solved) < 5:
+            if len(self.data.users[user].problems_solved) < self.Variables.user_solve_requirements:
                 # print(self.data.users[user].problems_solved)
                 delete_users.append(user)
         # print(len(delete_users))
@@ -235,31 +236,22 @@ class Engine:
         # for user in self.data.users:
         #     CustomLib.debug_print("User", user, self.data.users[user].problems_solved, self.data.users[user].problems_unsolved)
 
-    # def initialize_tests(self):
-    #     delete_users = list()
-    #     for user in self.data.users:
-    #         if len(self.data.users[user].problems_solved) < self.testing.test_solve_requirement * 2:
-    #             delete_users.append(user)
-    #     for user in delete_users:
-    #         self.data.users.pop(user)
-    #     for user in self.data.users:
-    #         self.testing.users_test[user] = set()
-    #         random.shuffle(self.data.users[user].problems_solved)
-    #         self.data.users[user].problems_solved, self.testing.users_test[user] = CustomLib.split_in_half(
-    #             self.data.users[user].problems_solved)
-    #         for prob in self.testing.users_test[user]:
-    #             self.data.users[user].submissions_stats.pop(prob)
     def initialize_tests(self):
+        # self.testing.writer.writerow(
+        #     ["Test Size", "Recommendation Size", "Similarity", "Voting", "Precision", "Recall", "F1", "One Hit",
+        #      "MRR"])
         for user in self.data.users:
             if len(self.data.users[user].problems_solved) >= self.testing.test_solve_requirement * 2:
                 self.testing.users_test[user] = set()
-                random.shuffle(self.data.users[user].problems_solved)
+                random.Random(228).shuffle(self.data.users[user].problems_solved)
                 self.data.users[user].problems_solved, self.testing.users_test[user] = CustomLib.split_in_half(
                     self.data.users[user].problems_solved)
                 for prob in self.testing.users_test[user]:
                     self.data.users[user].submissions_stats.pop(prob)
+                # print(self.data.users[user].problems_solved)
+                # print(self.testing.users_test[user])
 
-    @timeit
+    # @timeit
     def categorize_problems(self):
         for prob in self.data.problems:
             self.data.problems[prob].solved_threshold = 0 if len(self.data.problems[prob].attempts_before_success) == 0 \
@@ -277,7 +269,6 @@ class Engine:
                     self.data.problems[prob].problem_type = ProblemTypes.difficult
                 else:
                     self.data.problems[prob].problem_type = ProblemTypes.variable
-
 
     def categorize_user(self, user):
         for prob in user.problems_solved:
@@ -305,7 +296,7 @@ class Engine:
         else:
             user.user_type = UserTypes.variable
 
-    @timeit
+    # @timeit
     def categorize_users(self):
         for user in self.data.users:
             self.categorize_user(self.data.users[user])
@@ -318,7 +309,7 @@ class Engine:
                     if user.user_type == UserTypes.precise \
                     else SubmissionType.solved_with_many
 
-    @timeit
+    # @timeit
     def manage_noise_users(self):
         for user in self.data.users:
             self.manage_noise_user(self.data.users[user])
@@ -337,7 +328,7 @@ class Engine:
                 # CustomLib.debug_print("Projections", sorted(user.problems_solved), sorted(user2.problems_solved), sorted(user.problems_unsolved), sorted(user2.problems_unsolved), edge_weight)
         return ans
 
-    @timeit
+    # @timeit
     def build_user_projections(self):
         for i in self.data.users.keys():
             self.data.users[i].projections = self.get_user_projections(self.data.users[i])
@@ -355,7 +346,7 @@ class Engine:
             raise Exception("Not a viable strategy")
         return solutions[self.Variables.similarity_strategy](user1, user2)
 
-    # @timeit
+    # #@timeit
     def get_user_similarities(self, user):
         ans = list()
         for j in self.data.users:
@@ -371,7 +362,7 @@ class Engine:
         # CustomLib.debug_print("SimilaritiesCheck", ans)
         return ans
 
-    @timeit
+    # @timeit
     def build_similarities(self):
         for i in self.data.users:
             # CustomLib.debug_print("Projections", i, self.data.users[i].projections)
@@ -404,7 +395,7 @@ class Engine:
 
         return ans
 
-    @timeit
+    # @timeit
     def build_recommendations(self):
         for i in self.data.users.keys():
             # CustomLib.debug_print("Similarities test", i, self.data.users[i].similarities)
@@ -431,7 +422,7 @@ class Engine:
         #                       user.projections,
         #                       user.similarities,
         #                       user.recommendations)
-                              # self.data.users)
+        # self.data.users)
 
     def execute(self):
         self.categorize_problems()
@@ -452,35 +443,27 @@ class Engine:
                 for voting in VotingStrategy:
                     self.Variables.similarity_strategy = similarity
                     self.Variables.voting_strategy = voting
-                    print("Similarity = {}, Voting = {}".format(self.Variables.similarity_strategy,
-                                                                self.Variables.voting_strategy))
+                    # print("Similarity = {}, Voting = {}".format(self.Variables.similarity_strategy,
+                    #                                             self.Variables.voting_strategy))
                     self.testing.clear_aggregates()
-                    for i in range(3):
-                        self.initialize()
-                        self.initialize_tests()
-                        self.execute()
-                        self.testing.perform_test()
-                    print("Users size:", len(self.data.users))
-                    print("Test size:", len(self.testing.users_test))
+                    self.initialize()
+                    self.initialize_tests()
+                    self.execute()
+                    self.testing.perform_test()
+                    # print("Users size:", len(self.data.users))
+                    # print("Test size:", len(self.testing.users_test))
+                    # print("Testing Sizes", len(self.testing.p_agg))
                     self.testing.print_means()
         else:
             self.Variables.similarity_strategy = SimilarityStrategy.jaccard_neighbours
             self.Variables.voting_strategy = VotingStrategy.weighted
-            print("Similarity = {}, Voting = {}".format(self.Variables.similarity_strategy,
-                                                        self.Variables.voting_strategy))
+            # print("Similarity = {}, Voting = {}".format(self.Variables.similarity_strategy,
+            #                                             self.Variables.voting_strategy))
             self.testing.clear_aggregates()
-            for i in range(1):
-                self.initialize()
-                self.initialize_tests()
-                self.execute()
-                self.testing.perform_test()
-                users = self.data.users
-                # for username in self.data.users:
-                #     CustomLib.debug_print("Full test", username,
-                #                           sorted(users[username].problems_solved),
-                #                           sorted(users[username].recommendations.keys()),
-                #                           sorted(self.testing.users_test[username]))
-
+            self.initialize()
+            self.initialize_tests()
+            self.execute()
+            self.testing.perform_test()
             print("Users size:", len(self.data.users))
             print("Test size:", len(self.testing.users_test))
             self.testing.print_means()

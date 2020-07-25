@@ -25,8 +25,10 @@ user_data = [(1, 1, 1),
              ]
 
 for N in TOP_N:
-    print("N = {}".format(N))
-    engine.Variables.recommendation_size = N
-    engine.test()
+    # print("N = {}".format(N))
+    for t in range(15):
+        engine.Variables.edge_weight_threshold = t
+        engine.Variables.recommendation_size = N
+        engine.test()
 # engine.run()
 # engine.execute_for_user(user_data)
