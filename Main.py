@@ -1,6 +1,6 @@
 from Engine import Engine
 
-TOP_N = [5, 10, 15, 20, 30, 40, 50]
+TOP_N = [15]
 engine = Engine(path="/Users/citius/Desktop/Study/SeniorThesisWork/OlympSubmissions.csv")
 # user = engine.User
 # user.problems_solved = [2, 10, 12]
@@ -24,11 +24,6 @@ user_data = [(1, 1, 1),
              (80, 2, 5),
              ]
 
-for N in TOP_N:
-    # print("N = {}".format(N))
-    for t in range(7):
-        engine.Variables.edge_weight_threshold = t
-        engine.Variables.recommendation_size = N
-        engine.test()
+engine.test()
 # engine.run()
 # engine.execute_for_user(user_data)

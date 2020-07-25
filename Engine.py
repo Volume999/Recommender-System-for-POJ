@@ -6,64 +6,12 @@ from functools import reduce
 import pandas as pd
 from enum import Enum
 import CustomLib
+from CustomLib import UserTypes, SubmissionType, VerdictTypes, ProblemTypes, VotingStrategy, SimilarityStrategy
 import random
 from Calculators import WeightCalculator, SimilarityCalculator
 import sys
 import time
 import csv
-
-
-def timeit(f):
-    def timed(*args, **kw):
-        ts = time.time()
-        result = f(*args, **kw)
-        te = time.time()
-
-        print('func:{} args:[{}, {}] took: {} sec'.format(f.__name__, args, kw, te - ts))
-        return result
-
-    return timed
-
-
-class VerdictTypes(Enum):
-    success = 1
-    fail = 2
-    partially_solved = 3
-
-
-class SimilarityStrategy(Enum):
-    edge_weight = 1
-    common_neighbours = 2
-    jaccard_neighbours = 3
-    jaccard_problems = 4
-    adar_adamic = 5
-    preferential = 6
-
-
-class VotingStrategy(Enum):
-    simple = 1
-    weighted = 2
-    positional = 3
-
-
-class ProblemTypes(Enum):
-    easy = 1
-    difficult = 2
-    variable = -1
-
-
-class UserTypes(Enum):
-    precise = 1
-    imprecise = 2
-    variable = -1
-
-
-class SubmissionType(Enum):
-    solved_with_few = 1
-    solved_with_many = 2
-    unsolved_with_many = 3
-    unsolved_with_few = 4
-    solved_partially = 5
 
 
 class Engine:
@@ -75,7 +23,7 @@ class Engine:
             self.user_type = UserTypes.variable
             self.projections = dict()
             self.similarities = list()
-            self.recommendations = defaultdict(float)
+            self.recommendations = list()
 
     class SubmissionStats:
         def __init__(self, attempts):
@@ -91,13 +39,13 @@ class Engine:
             self.problem_type = ProblemTypes.variable
 
     class Variables:
-        edge_weight_threshold = 10
+        edge_weight_threshold = 2
         similarity_threshold = 0
         neighbourhood_size = 100
-        recommendation_size = 10
+        recommendation_size = 15
         voting_strategy = VotingStrategy.simple
         similarity_strategy = SimilarityStrategy.adar_adamic
-        user_solve_requirements = 5
+        user_solve_requirements = 2
         path = str()
 
     class Data:
@@ -130,38 +78,51 @@ class Engine:
 
         # @timeit
         def perform_test(self):
+            users = self.engine.data.users
             precision = 0
             recall = 0
-            count = 0
             one_hit = 0
-            users = self.engine.data.users
             for (username, problemsSolved) in self.users_test.items():
-                if len(users[username].recommendations.keys()) > 0:
-                    count += 1
+                user_recommendations = [prob[0] for prob in users[username].recommendations]
+                # if len(user_recommendations) == 0:
+                #     print(username,
+                #     self.engine.Variables.edge_weight_threshold,
+                #     user_recommendations, users[username].problems_solved,
+                #     users[username].problems_unsolved, users[username].
+                #     projections,
+                #     users[username].similarities)
+                # print(user_recommendations, users[username].recommendations)
+                if len(user_recommendations) > 0:
+                    # count += 1
                     true_positive = 0
                     for probId in problemsSolved:
-                        if probId in users[username].recommendations.keys():
+                        if probId in user_recommendations:
                             true_positive += 1
-                    precision += true_positive / len(users[username].recommendations.keys())
+                    precision += true_positive / len(user_recommendations)
                     recall += true_positive / len(problemsSolved)
                     if true_positive > 0:
                         one_hit += 1
             mrr_list = list()
             for j in self.engine.testing.users_test:
                 user = self.engine.data.users[j]
-                for i in range(len(user.recommendations.keys())):
-                    prob = list(user.recommendations.keys())[i]
+                user_r = [prob[0] for prob in user.recommendations]
+                for i in range(len(user_r)):
+                    prob = list(user_r)[i]
                     if prob in self.users_test[j]:
                         mrr_list.append(1 / (i + 1))
                         break
-            mrr = statistics.mean(mrr_list)
-            if count != 0:
-                precision = precision / count
-                recall = recall / count
-                f1 = 2 * precision * recall / (precision + recall)
-                one_hit = one_hit / count
-            else:
-                precision = recall = f1 = 0
+            mrr = statistics.mean(mrr_list) if len(mrr_list) > 0 else 0
+            # if count != 0:
+            #     precision = precision / count
+            #     recall = recall / count
+            #     f1 = 2 * precision * recall / (precision + recall)
+            #     one_hit = one_hit / count
+            # else:
+            #     precision = recall = f1 = 0
+            precision /= len(self.users_test)
+            recall /= len(self.users_test)
+            one_hit /= len(self.users_test)
+            f1 = 2 * precision * recall / (precision + recall)
             self.p_agg.append(precision)
             self.recall_agg.append(recall)
             self.f1_agg.append(f1)
@@ -217,17 +178,17 @@ class Engine:
                     self.data.users[user] = self.User()
                 if status == VerdictTypes.success.value:
                     self.data.users[user].problems_solved.append(prob_id)
-                elif status == VerdictTypes.fail.value or status == VerdictTypes.partially_solved:
+                elif status == VerdictTypes.fail.value or status == VerdictTypes.partially_solved.value:
                     self.data.users[user].problems_unsolved.append(prob_id)
                 self.data.users[user].submissions_stats[prob_id] = self.SubmissionStats(attempts=count)
-                if status == VerdictTypes.partially_solved:
+                if status == VerdictTypes.partially_solved.value:
                     self.data.users[user].submissions_stats[prob_id].submission_type = SubmissionType.solved_partially
 
                 if prob_id not in self.data.problems:
                     self.data.problems[prob_id] = self.ProblemStats()
                 if status == VerdictTypes.success.value:
                     self.data.problems[prob_id].attempts_before_success.append(count)
-                elif status == VerdictTypes.fail.value or status == VerdictTypes.partially_solved:
+                elif status == VerdictTypes.fail.value or status == VerdictTypes.partially_solved.value:
                     self.data.problems[prob_id].attempts_before_fail.append(count)
         delete_users = list()
         for user in self.data.users:
@@ -238,7 +199,11 @@ class Engine:
         for user in delete_users:
             self.data.users.pop(user)
         # for user in self.data.users:
-        #     CustomLib.debug_print("User", user, self.data.users[user].problems_solved, self.data.users[user].problems_unsolved)
+        #     CustomLib.debug_print("User",
+        #     user,
+        #     self.data.users[user].
+        #     problems_solved,
+        #     self.data.users[user].problems_unsolved)
 
     def initialize_tests(self):
         # self.testing.writer.writerow(
@@ -258,7 +223,8 @@ class Engine:
     # @timeit
     def categorize_problems(self):
         for prob in self.data.problems:
-            self.data.problems[prob].solved_threshold = 0 if len(self.data.problems[prob].attempts_before_success) == 0 \
+            self.data.problems[prob].solved_threshold = 0 \
+                if len(self.data.problems[prob].attempts_before_success) == 0 \
                 else statistics.mean(self.data.problems[prob].attempts_before_success)
             self.data.problems[prob].unsolved_threshold = 0 if len(self.data.problems[prob].attempts_before_fail) == 0 \
                 else statistics.mean(self.data.problems[prob].attempts_before_fail)
@@ -286,6 +252,8 @@ class Engine:
                     user.submissions_stats[prob].submission_type = SubmissionType.unsolved_with_many
                 else:
                     user.submissions_stats[prob].submission_type = SubmissionType.unsolved_with_few
+            # else:
+            #     print("yess")
         solved_with_many = len([val for val in user.problems_solved if
                                 user.submissions_stats[
                                     val].submission_type == SubmissionType.solved_with_many])
@@ -321,6 +289,10 @@ class Engine:
 
     def get_user_projections(self, user):
         ans = dict()
+        # print(user.user_type,
+        #       user.problems_solved,
+        #       user.problems_unsolved,
+        #       [p.submission_type for (prob, p) in user.submissions_stats.items() if p.submission_type.value == 0])
         for j in self.data.users:
             user2 = self.data.users[j]
             if user is not user2:
@@ -330,7 +302,15 @@ class Engine:
                                    == user2.submissions_stats[val].submission_type])
                 if edge_weight > self.Variables.edge_weight_threshold:
                     ans[user2] = edge_weight
-                # CustomLib.debug_print("Projections", sorted(user.problems_solved), sorted(user2.problems_solved), sorted(user.problems_unsolved), sorted(user2.problems_unsolved), edge_weight)
+                # else:
+                #     print(user, self.engine.Variables.edge_weight_threshold,
+                #           user.problems_solved, user.problems_unsolved, edge_weight)
+                # CustomLib.debug_print("Projections",
+                # sorted(user.problems_solved),
+                # sorted(user2.problems_solved),
+                # sorted(user.problems_unsolved),
+                # sorted(user2.problems_unsolved),
+                # edge_weight)
         return ans
 
     # @timeit
@@ -354,6 +334,10 @@ class Engine:
     # #@timeit
     def get_user_similarities(self, user):
         ans = list()
+        # if len(user.projections) == 0:
+        #     print(user.problems_solved,
+        #     user.problems_unsolved,
+        #     [p.submission_type for (prob, p) in user.submissions_stats.items()])
         for j in self.data.users:
             user2 = self.data.users[j]
             if user is not user2:
@@ -394,11 +378,11 @@ class Engine:
         temp = list(ans.items())
         temp.sort(key=lambda a: a[1], reverse=True)
         temp = CustomLib.first_k_elements(temp, self.Variables.recommendation_size)
-        ans = defaultdict(float)
-        for (prob, count) in temp:
-            ans[prob] = count
-
-        return ans
+        return temp
+        # ans = defaultdict(float)
+        # for (prob, count) in temp:
+        #     ans[prob] = count
+        # return ans
 
     # @timeit
     def build_recommendations(self):
@@ -406,6 +390,10 @@ class Engine:
             # CustomLib.debug_print("Similarities test", i, self.data.users[i].similarities)
             self.data.users[i].recommendations = self.get_user_recommendations(self.data.users[i])
             # CustomLib.debug_print("Recommendations check", i, self.data.users[i].recommendations)
+
+    # def sort_recommendations(self):
+    #     for i in self.data.users.keys():
+    #         sort_recommendations(self.data.users[i])
 
     def execute_for_user(self, user_data):
         user = self.User()
@@ -418,16 +406,7 @@ class Engine:
         user.projections = self.get_user_projections(user)
         user.similarities = self.get_user_similarities(user)
         user.recommendations = self.get_user_recommendations(user)
-        print(user.recommendations)
-        # CustomLib.debug_print("Executing for user",
-        #                       user_data,
-        #                       user.problems_solved,
-        #                       user.problems_unsolved,
-        #                       user.submissions_stats,
-        #                       user.projections,
-        #                       user.similarities,
-        #                       user.recommendations)
-        # self.data.users)
+        # print(user.recommendations)
 
     def execute(self):
         self.categorize_problems()
@@ -448,27 +427,19 @@ class Engine:
                 for voting in VotingStrategy:
                     self.Variables.similarity_strategy = similarity
                     self.Variables.voting_strategy = voting
-                    # print("Similarity = {}, Voting = {}".format(self.Variables.similarity_strategy,
-                    #                                             self.Variables.voting_strategy))
                     self.testing.clear_aggregates()
                     self.initialize()
                     self.initialize_tests()
                     self.execute()
                     self.testing.perform_test()
-                    # print("Users size:", len(self.data.users))
-                    # print("Test size:", len(self.testing.users_test))
-                    # print("Testing Sizes", len(self.testing.p_agg))
                     self.testing.print_means()
         else:
             self.Variables.similarity_strategy = SimilarityStrategy.jaccard_neighbours
             self.Variables.voting_strategy = VotingStrategy.weighted
-            # print("Similarity = {}, Voting = {}".format(self.Variables.similarity_strategy,
-            #                                             self.Variables.voting_strategy))
             self.testing.clear_aggregates()
             self.initialize()
             self.initialize_tests()
             self.execute()
             self.testing.perform_test()
-            # print("Users size:", len(self.data.users))
-            # print("Test size:", len(self.testing.users_test))
             self.testing.print_means()
+            print(len(self.data.users), len(self.testing.users_test))
