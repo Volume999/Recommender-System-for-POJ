@@ -28,6 +28,7 @@ def timeit(f):
 class VerdictTypes(Enum):
     success = 1
     fail = 2
+    partially_solved = 3
 
 
 class SimilarityStrategy(Enum):
@@ -62,6 +63,7 @@ class SubmissionType(Enum):
     solved_with_many = 2
     unsolved_with_many = 3
     unsolved_with_few = 4
+    solved_partially = 5
 
 
 class Engine:
@@ -167,7 +169,7 @@ class Engine:
             self.mrr_agg.append(mrr)
 
         def print_means(self):
-            with open(file='Stats3.csv', mode='a') as file:
+            with open(file='stats.csv', mode='a') as file:
                 writer = csv.writer(file)
                 writer.writerow([self.test_solve_requirement,
                                  self.engine.Variables.recommendation_size,
@@ -215,15 +217,17 @@ class Engine:
                     self.data.users[user] = self.User()
                 if status == VerdictTypes.success.value:
                     self.data.users[user].problems_solved.append(prob_id)
-                elif status == VerdictTypes.fail.value:
+                elif status == VerdictTypes.fail.value or status == VerdictTypes.partially_solved:
                     self.data.users[user].problems_unsolved.append(prob_id)
                 self.data.users[user].submissions_stats[prob_id] = self.SubmissionStats(attempts=count)
+                if status == VerdictTypes.partially_solved:
+                    self.data.users[user].submissions_stats[prob_id].submission_type = SubmissionType.solved_partially
 
                 if prob_id not in self.data.problems:
                     self.data.problems[prob_id] = self.ProblemStats()
                 if status == VerdictTypes.success.value:
                     self.data.problems[prob_id].attempts_before_success.append(count)
-                elif status == VerdictTypes.fail.value:
+                elif status == VerdictTypes.fail.value or status == VerdictTypes.partially_solved:
                     self.data.problems[prob_id].attempts_before_fail.append(count)
         delete_users = list()
         for user in self.data.users:
@@ -277,10 +281,11 @@ class Engine:
             else:
                 user.submissions_stats[prob].submission_type = SubmissionType.solved_with_few
         for prob in user.problems_unsolved:
-            if user.submissions_stats[prob].attempts >= self.data.problems[prob].unsolved_threshold:
-                user.submissions_stats[prob].submission_type = SubmissionType.unsolved_with_many
-            else:
-                user.submissions_stats[prob].submission_type = SubmissionType.unsolved_with_few
+            if user.submissions_stats[prob].submission_type != SubmissionType.solved_partially:
+                if user.submissions_stats[prob].attempts >= self.data.problems[prob].unsolved_threshold:
+                    user.submissions_stats[prob].submission_type = SubmissionType.unsolved_with_many
+                else:
+                    user.submissions_stats[prob].submission_type = SubmissionType.unsolved_with_few
         solved_with_many = len([val for val in user.problems_solved if
                                 user.submissions_stats[
                                     val].submission_type == SubmissionType.solved_with_many])
@@ -464,6 +469,6 @@ class Engine:
             self.initialize_tests()
             self.execute()
             self.testing.perform_test()
-            print("Users size:", len(self.data.users))
-            print("Test size:", len(self.testing.users_test))
+            # print("Users size:", len(self.data.users))
+            # print("Test size:", len(self.testing.users_test))
             self.testing.print_means()
