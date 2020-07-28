@@ -27,16 +27,16 @@ def split_in_half(lst):
     half = len(lst) // 2
     return lst[:half], lst[half:]
 
-def timeit(f):
-    def timed(*args, **kw):
-        ts = time.time()
-        result = f(*args, **kw)
-        te = time.time()
-
-        print('func:{} args:[{}, {}] took: {} sec'.format(f.__name__, args, kw, te - ts))
-        return result
-
-    return timed
+# def timeit(f):
+#     def timed(*args, **kw):
+#         ts = time.time()
+#         result = f(*args, **kw)
+#         te = time.time()
+#
+#         print('func:{} args:[{}, {}] took: {} sec'.format(f.__name__, args, kw, te - ts))
+#         return result
+#
+#     return timed
 
 
 class VerdictTypes(Enum):
@@ -60,7 +60,7 @@ class VotingStrategy(Enum):
     positional = 3
 
 
-class ProblemTypes(Enum):
+class ProblemDifficulty(Enum):
     easy = 1
     difficult = 2
     variable = -1
@@ -78,3 +78,8 @@ class SubmissionType(Enum):
     unsolved_with_many = 3
     unsolved_with_few = 4
     solved_partially = 5
+
+
+# class ProblemType(Enum):
+#     easy = 1
+#     medium = 2

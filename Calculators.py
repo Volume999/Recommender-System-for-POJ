@@ -74,3 +74,21 @@ class SimilarityCalculator:
         ans = reduce(lambda acc, i: acc + i, user1.projections.values(), 0) * \
               reduce(lambda acc, i: acc + i, user2.projections.values(), 0)
         return ans
+
+
+def calc_edge(user1, user2):
+    intersection = CustomLib.intersection(user1.submissions_stats, user2.submissions_stats)
+    ans = 0
+    for i in intersection:
+        s1 = user1.submissions_stats[i]
+        s2 = user2.submissions_stats[i]
+        solved = [CustomLib.SubmissionType.solved_with_few,
+                  CustomLib.SubmissionType.solved_with_many]
+        unsolved = [CustomLib.SubmissionType.unsolved_with_few,
+                    CustomLib.SubmissionType.unsolved_with_many]
+        if s1.submission_type == s2.submission_type:
+            ans += 1
+        elif (s1.submission_type in solved and s2.submission_type in solved)\
+                or (s1.submission_type in unsolved and s2.submission_type in unsolved):
+            ans += 0.7
+    return ans
