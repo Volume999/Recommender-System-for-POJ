@@ -2,7 +2,7 @@ import math
 from functools import reduce
 
 import CustomLib
-
+from Enums import SubmissionType
 
 class WeightCalculator:
     @staticmethod
@@ -82,13 +82,14 @@ def calc_edge(user1, user2):
     for i in intersection:
         s1 = user1.submissions_stats[i]
         s2 = user2.submissions_stats[i]
-        solved = [CustomLib.SubmissionType.solved_with_few,
-                  CustomLib.SubmissionType.solved_with_many]
-        unsolved = [CustomLib.SubmissionType.unsolved_with_few,
-                    CustomLib.SubmissionType.unsolved_with_many]
+        solved = [SubmissionType.solved_with_few,
+                  SubmissionType.solved_with_many]
+        unsolved = [SubmissionType.unsolved_with_few,
+                    SubmissionType.unsolved_with_many]
         if s1.submission_type == s2.submission_type:
             ans += 1
         elif (s1.submission_type in solved and s2.submission_type in solved)\
                 or (s1.submission_type in unsolved and s2.submission_type in unsolved):
             ans += 0.7
     return ans
+
