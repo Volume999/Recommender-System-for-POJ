@@ -5,6 +5,7 @@ from Structs import User, SubmissionStats, ProblemStats
 from Enums import ImportMode
 
 
+# Data collection logic
 class Collection:
     def __init__(self):
         self.users = dict()
@@ -21,6 +22,8 @@ class Collection:
             user = str(row[1][1])
             status = row[1][2]
             count = row[1][3]
+            # if the number of attempts for a problem is more than 100
+            # it is not considered
             if count < 100:
                 if user not in users.keys():
                     users[user] = User()
@@ -38,6 +41,7 @@ class Collection:
                     problems[prob_id].attempts_before_success.append(count)
                 elif status == VerdictTypes.fail.value or status == VerdictTypes.partially_solved.value:
                     problems[prob_id].attempts_before_fail.append(count)
+        # REWRITE THIS LOGIC
         delete_users = list()
         for user in users:
             if len(users[user].problems_solved) < Variables.user_solve_requirements:

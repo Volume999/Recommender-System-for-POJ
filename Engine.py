@@ -1,4 +1,4 @@
-from Enums import VotingStrategy, SimilarityStrategy
+from Enums import VotingStrategy, SimilarityStrategy, VerdictTypes
 from DataCollection import Collection
 from Variables import Variables
 from DataTesting import Testing
@@ -7,13 +7,20 @@ from DataCalculation import Calculator
 from Structs import User, SubmissionStats
 
 
+# Engine - main part of the project. Holds the model of
+# the recommendation building
 class Engine:
     class Data:
+        # Engine data initialization
+        # path - CSV File path (should be improved to
+        # include other types of data sources)
         def __init__(self):
             self.path = str()
             self.users = dict()
             self.problems = dict()
 
+    # Engine initialization:
+    # Data, Variables, Calculator, Preprocessor
     def __init__(self, path=""):
         self.data = self.Data()
         Variables.path = path
@@ -22,6 +29,11 @@ class Engine:
         self.calculator = None
         self.preprocessor = None
 
+    # Initialization method
+    # Collection - Collects data:
+    # problems, users and submissions data
+    # Preprocessor - preprocesses the data
+    # Calculator - calculates weights and recommendation list
     def initialize(self):
         data_collection = Collection()
         data_collection.import_from_csv(self.data.path)
@@ -30,25 +42,34 @@ class Engine:
         self.calculator = Calculator(self.data)
         self.preprocessor = Preprocessing(self.data)
 
+    # Returns the recommendation list for a user
+    # Input - user data - list of tuples of form
+    # (Task Id, status, attempts)
     def execute_for_user(self, user_data):
         user = User()
         for (pid, status, count) in user_data:
             if pid in self.data.problems:
-                (user.problems_solved if status == 1 else user.problems_unsolved).append(pid)
+                (user.problems_solved if status == VerdictTypes.success.value else user.problems_unsolved).append(pid)
                 user.submissions_stats[pid] = SubmissionStats(attempts=count)
         self.preprocessor.preprocess_user(user)
         self.calculator.calculate_user(user)
         print(user.recommendations)
 
+    # Train the model and calculate recommendation list for each user
     def execute(self):
         self.preprocessor.preprocess()
         self.calculator.calculate()
 
+    # Run mode - only train the model, no testing
     def run(self):
         self.initialize()
         self.execute()
 
+    # Test mode - train the model and test it
     def test(self):
+        # Full test - for each Similarity strategy
+        # and for each Voting strategy perform tests
+        # Else do it only for the selected strategies
         full_test = False
         if full_test:
             for similarity in SimilarityStrategy:

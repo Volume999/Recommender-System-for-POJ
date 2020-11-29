@@ -9,6 +9,8 @@ class Calculator:
         self.users = data.users
         self.problems = data.problems
 
+    # User projections - number of tasks that both users A and B solved or
+    # unsolved with a similar or same submissions status
     def get_user_projections(self, user):
         ans = dict()
         for j in self.users:
@@ -71,17 +73,22 @@ class Calculator:
                 if prob not in user.problems_solved:
                     ans[prob] += voting_weight
         temp = list(ans.items())
+        # Sorting by voting weight and outputting the first N elements
         temp.sort(key=lambda a: a[1], reverse=True)
         # temp = CustomLib.first_k_elements(temp, Variables.recommendation_size)
         return temp[:Variables.recommendation_size]
 
     def fill_recommendations(self, user, problems):
+        # che za govno
         i = 0
-        while len(user.recommendations) < Variables.recommendation_size and i < len(problems):
+        while len(user.recommendations) < Variables.recommendation_size \
+                and i < len(problems):
             user.recommendations.append((problems[i][0], 0))
             i += 1
 
     def build_recommendations(self):
+        # Easy problems - problem-set used to fill recommendations
+        # Problems categorized as Easy, and sorted by popularity
         easy_problems = list(filter(lambda prob: prob[1].problem_type == ProblemDifficulty.easy,
                                     self.problems.items()))
         easy_problems.sort(key=lambda item: len(item[1].attempts_before_success) + len(item[1].attempts_before_fail),
@@ -91,6 +98,10 @@ class Calculator:
             if len(self.users[i].recommendations) < Variables.recommendation_size:
                 self.fill_recommendations(self.users[i], easy_problems)
 
+    # Calculator logic:
+    # 1. Build user - projections
+    # 2. Build similarity matrix
+    # 3. Build recommendation list
     def calculate(self):
         self.build_user_projections()
         self.build_similarities()
