@@ -76,19 +76,18 @@ class Engine:
                 for voting in VotingStrategy:
                     Variables.similarity_strategy = similarity
                     Variables.voting_strategy = voting
-                    self.testing.clear_aggregates()
+                    # self.testing.clear_aggregates()
                     self.initialize()
                     self.testing.initialize_tests()
                     self.execute()
                     self.testing.perform_test()
-                    self.testing.print_means()
+                    self.testing.print_results()
         else:
             Variables.similarity_strategy = SimilarityStrategy.jaccard_neighbours
             Variables.voting_strategy = VotingStrategy.weighted
-            self.testing.clear_aggregates()
             self.initialize()
             self.testing.initialize_tests()
             self.execute()
             self.testing.perform_test()
-            self.testing.print_means()
+            self.testing.print_results()
             print(len(self.data.users), len(self.testing.users_test))

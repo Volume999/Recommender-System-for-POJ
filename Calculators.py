@@ -23,8 +23,6 @@ class WeightCalculator:
 class SimilarityCalculator:
     @staticmethod
     def calc_jaccard_neighbours(user1, user2):
-        # user1_neighbours = self.engine.data.users_projection_matrix[user1].keys()
-        # user2_neighbours = self.engine.data.users_projection_matrix[user2].keys()
         user1_neighbours = list(user1.projections.keys())
         user2_neighbours = list(user2.projections.keys())
         intersection_val = CustomLib.intersection_length(user1_neighbours, user2_neighbours)

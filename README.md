@@ -1,9 +1,12 @@
 # Recommender-System-for-POJ
-Senior Thesis work
-as
-asd
-asd
-asd
-ds
-ad
-a
+Recommendation System for a Programming Online Judge program.
+
+Language: Python
+
+
+## Installation
+Clone the repository<br>
+Install the libraries:<br>
+<code>
+pip install -r requirements.txt
+</code>
