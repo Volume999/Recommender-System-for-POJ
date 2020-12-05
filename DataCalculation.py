@@ -72,19 +72,8 @@ class Calculator:
             for prob in user2.problems_solved:
                 if prob not in user.problems_solved:
                     ans[prob] += voting_weight
-        temp = list(ans.items())
-        # Sorting by voting weight and outputting the first N elements
-        temp.sort(key=lambda a: a[1], reverse=True)
-        # temp = CustomLib.first_k_elements(temp, Variables.recommendation_size)
-        return temp[:Variables.recommendation_size]
-
-    def fill_recommendations(self, user, problems):
-        # che za govno
-        i = 0
-        while len(user.recommendations) < Variables.recommendation_size \
-                and i < len(problems):
-            user.recommendations.append((problems[i][0], 0))
-            i += 1
+        # sorts the list by voting weight, then selects N problems and returns as list (probId, weight)
+        return sorted(list(ans.items()), key=lambda item: item[1], reverse=True)[:Variables.recommendation_size]
 
     def build_recommendations(self):
         # Easy problems - problem-set used to fill recommendations
@@ -95,8 +84,10 @@ class Calculator:
                            reverse=True)
         for i in self.users.keys():
             self.users[i].recommendations = self.get_user_recommendations(self.users[i])
-            if len(self.users[i].recommendations) < Variables.recommendation_size:
-                self.fill_recommendations(self.users[i], easy_problems)
+            dif = Variables.recommendation_size - len(self.users[i].recommendations)
+            if dif > 0:
+                # if recommendation list is smaller than needed, add all easy problems that user did not solve
+                self.users[i].recommendations.extend(easy_problems[:dif] if dif < len(easy_problems) else easy_problems)
 
     # Calculator logic:
     # 1. Build user - projections
