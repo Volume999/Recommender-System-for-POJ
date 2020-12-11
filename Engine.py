@@ -53,7 +53,8 @@ class Engine:
                 user.submissions_stats[pid] = SubmissionStats(attempts=count)
         self.preprocessor.preprocess_user(user)
         self.calculator.calculate_user(user)
-        print(user.recommendations)
+        # print(self.data.users, self.data.problems)
+        return user.recommendations
 
     # Train the model and calculate recommendation list for each user
     def execute(self):

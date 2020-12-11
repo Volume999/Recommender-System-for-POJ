@@ -99,6 +99,6 @@ class Calculator:
         self.build_recommendations()
 
     def calculate_user(self, user):
-        self.get_user_projections(user)
-        self.get_user_similarities(user)
-        self.get_user_recommendations(user)
+        user.projections = self.get_user_projections(user)
+        user.similarities = self.get_user_similarities(user)
+        user.recommendations = self.get_user_recommendations(user)

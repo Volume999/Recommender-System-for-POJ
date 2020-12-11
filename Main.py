@@ -46,7 +46,8 @@ user_data = [(1, 1, 1),
 
 # engine.test to initialize engine and test it
 # engine.run to initialize and leave ready for input
-engine.test()
-# engine.run()
+# engine.test()
+engine.run()
+print(engine.data.users.keys())
 # print('start')
 # engine.execute_for_user(user_data)
