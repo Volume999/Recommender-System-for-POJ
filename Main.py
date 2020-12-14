@@ -1,13 +1,15 @@
-from Engine import Engine
-
+from Engine import Engine, get_engine
+from DataSource import DataSourceCsv, DataSourcePickle, EnginePickle
+from timeit import default_timer
 # Recommendation list size
 
 TOP_N = [15]
 
 
 # Engine initialization
-
-engine = Engine(path="/Users/citius/Desktop/Study/SeniorThesisWork/OlympSubmissions.csv")
+data_source = DataSourceCsv(file_path="/Users/citius/Desktop/Study/SeniorThesisWork/OlympSubmissions.csv")
+engine_source = EnginePickle(file_path="Engine.pickle")
+engine = get_engine(engine_source)
 
 # <explanation>
 # Testing Recommendations for a user
@@ -46,8 +48,9 @@ user_data = [(1, 1, 1),
 
 # engine.test to initialize engine and test it
 # engine.run to initialize and leave ready for input
-# engine.test()
-engine.run()
-print(engine.data.users.keys())
+engine.test()
+# engine.run()
+# print(engine.data.users.keys())
 # print('start')
 # engine.execute_for_user(user_data)
+# engine.save()

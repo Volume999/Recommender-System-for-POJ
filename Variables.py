@@ -24,3 +24,5 @@ class Variables:
     user_solve_requirements = 4
     # path - path to CSV
     path = str()
+    #engine_pickle_file_name - file name of saved engine
+    engine_pickle_file_name = 'Engine.pickle'

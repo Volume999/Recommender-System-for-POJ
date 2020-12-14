@@ -5,8 +5,11 @@ from DataTesting import Testing
 from DataProcessing import Preprocessing
 from DataCalculation import Calculator
 from Structs import User, SubmissionStats
+from DataSource import DataSourceCsv, DataSourcePickle, EnginePickle
+import pickle
+import sys
 
-
+sys.setrecursionlimit(50000)
 # Engine - main part of the project. Holds the model of
 # the recommendation building
 class Engine:
@@ -21,13 +24,14 @@ class Engine:
 
     # Engine initialization:
     # Data, Variables, Calculator, Preprocessor
-    def __init__(self, path=""):
+    def __init__(self, data_source):
         self.data = self.Data()
-        Variables.path = path
-        self.data.path = path
+        Variables.path = data_source.file_path
+        self.data.path = data_source.file_path
         self.testing = Testing(self)
         self.calculator = None
         self.preprocessor = None
+        self.initialize()
 
     # Initialization method
     # Collection - Collects data:
@@ -63,7 +67,7 @@ class Engine:
 
     # Run mode - only train the model, no testing
     def run(self):
-        self.initialize()
+        # self.initialize()
         self.execute()
 
     # Test mode - train the model and test it
@@ -86,9 +90,21 @@ class Engine:
         else:
             Variables.similarity_strategy = SimilarityStrategy.jaccard_neighbours
             Variables.voting_strategy = VotingStrategy.weighted
-            self.initialize()
+            # self.initialize()
             self.testing.initialize_tests()
             self.execute()
             self.testing.perform_test()
             self.testing.print_results()
             print(len(self.data.users), len(self.testing.users_test))
+
+    def save(self):
+        with open(Variables.engine_pickle_file_name, 'wb') as pickle_file:
+            pickle.dump(self, pickle_file)
+
+
+def get_engine(dataSource):
+    if isinstance(dataSource, EnginePickle):
+        with open(dataSource.file_path, 'rb') as pickle_file:
+            return pickle.load(pickle_file)
+    else:
+        return Engine(dataSource)
