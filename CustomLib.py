@@ -25,6 +25,7 @@ def split_in_half(lst):
     return lst[:half], lst[half:]
 
 
+# timing the function
 def debug_timing(func):
     def new_func(*args, **kwargs):
         start = timer()
