@@ -108,6 +108,7 @@ def get_engine(dataSource, mode):
             if mode == RunMode.test:
                 engine.testing.initialize_tests()
                 engine.execute()
+                engine.test()
             return engine
     else:
         return Engine(dataSource, mode)

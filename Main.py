@@ -11,14 +11,8 @@ TOP_N = [15]
 data_source = DataSourceCsv(file_path="/Users/citius/Desktop/Study/SeniorThesisWork/OlympSubmissions.csv")
 engine_source = EnginePickle(file_path="Engine.pickle")
 mode = RunMode.run
+engine = get_engine(data_source, mode)
 # end of initialization
-engine = get_engine(engine_source, mode)
-
-# <explanation>
-# Testing Recommendations for a user
-# Input - Solved problems, unsolved problems and their statistics ( number of attempts per problem )
-# </explanation>
-
 
 # <explanation>
 # Testing Recommendations for a user
