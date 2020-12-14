@@ -1,16 +1,18 @@
 from Enums import VotingStrategy, SimilarityStrategy, VerdictTypes, RunMode
-from DataCollection import Collection, get_Collection
+from DataCollection import get_Collection
 from Variables import Variables
 from DataTesting import Testing
 from DataProcessing import Preprocessing
 from DataCalculation import Calculator
 from Structs import User, SubmissionStats
-from DataSource import DataSourceCsv, EnginePickle
+from DataSource import EnginePickle
 from CustomLib import debug_timing
 import pickle
 import sys
 
 sys.setrecursionlimit(50000)
+
+
 # Engine - main part of the project. Holds the model of
 # the recommendation building
 class Engine:
@@ -19,7 +21,6 @@ class Engine:
         # path - CSV File path (should be improved to
         # include other types of data sources)
         def __init__(self):
-            self.path = str()
             self.users = dict()
             self.problems = dict()
 
@@ -27,8 +28,6 @@ class Engine:
     # Data, Variables, Calculator, Preprocessor
     def __init__(self, data_source, mode):
         self.data = self.Data()
-        Variables.path = data_source.file_path
-        self.data.path = data_source.file_path
         self.testing = Testing(self)
         self.calculator = None
         self.preprocessor = None
@@ -38,7 +37,6 @@ class Engine:
         self.execute()
         if mode == RunMode.test:
             self.test()
-
 
     # Initialization method
     # Collection - Collects data:
@@ -51,7 +49,6 @@ class Engine:
         self.data.problems = data_collection.problems
         self.calculator = Calculator(self.data)
         self.preprocessor = Preprocessing(self.data)
-        self.execute()
 
     # Returns the recommendation list for a user
     # Input - user data - list of tuples of form
@@ -73,8 +70,8 @@ class Engine:
 
     # Run mode - only train the model, no testing
     # def run(self):
-        # self.initialize()
-        # self.execute()
+    # self.initialize()
+    # self.execute()
 
     # Test mode - train the model and test it
     # @debug_timing
@@ -83,23 +80,17 @@ class Engine:
         # and for each Voting strategy perform tests
         # Else do it only for the selected strategies
         full_test = False
-        # self.testing.initialize_tests()
         if full_test:
             for similarity in SimilarityStrategy:
                 for voting in VotingStrategy:
                     Variables.similarity_strategy = similarity
                     Variables.voting_strategy = voting
-                    # self.testing.clear_aggregates()
-                    # self.initialize()
-                    # self.execute()
+                    self.execute()
                     self.testing.perform_test()
                     self.testing.print_results()
         else:
             Variables.similarity_strategy = SimilarityStrategy.jaccard_neighbours
             Variables.voting_strategy = VotingStrategy.weighted
-            # self.initialize()
-            # self.testing.initialize_tests()
-            # self.execute()
             self.testing.perform_test()
             self.testing.print_results()
             print(len(self.data.users), len(self.testing.users_test))
@@ -107,6 +98,7 @@ class Engine:
     def save(self):
         with open(Variables.engine_pickle_file_name, 'wb') as pickle_file:
             pickle.dump(self, pickle_file)
+
 
 @debug_timing
 def get_engine(dataSource, mode):
@@ -119,4 +111,3 @@ def get_engine(dataSource, mode):
             return engine
     else:
         return Engine(dataSource, mode)
-

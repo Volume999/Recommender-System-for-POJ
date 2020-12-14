@@ -1,4 +1,4 @@
-from Engine import Engine, get_engine
+from Engine import get_engine
 from DataSource import DataSourceCsv, EnginePickle
 from Enums import RunMode
 from CustomLib import debug_timing
@@ -36,7 +36,7 @@ user_data = [(1, 1, 1),
              (80, 2, 5),
              ]
 
-# print(engine.data.users.keys())
+print(engine.data.users.keys())
 
 # Saving the engine
 # engine.save()
