@@ -1,6 +1,7 @@
 from Engine import Engine, get_engine
-from DataSource import DataSourceCsv, DataSourcePickle, EnginePickle
-from timeit import default_timer
+from DataSource import DataSourceCsv, EnginePickle
+from Enums import RunMode
+from CustomLib import debug_timing
 # Recommendation list size
 
 TOP_N = [15]
@@ -9,26 +10,15 @@ TOP_N = [15]
 # Engine initialization
 data_source = DataSourceCsv(file_path="/Users/citius/Desktop/Study/SeniorThesisWork/OlympSubmissions.csv")
 engine_source = EnginePickle(file_path="Engine.pickle")
-engine = get_engine(engine_source)
+mode = RunMode.run
+# end of initialization
+engine = get_engine(engine_source, mode)
 
 # <explanation>
 # Testing Recommendations for a user
 # Input - Solved problems, unsolved problems and their statistics ( number of attempts per problem )
 # </explanation>
 
-# user = engine.User
-# user.problems_solved = [2, 10, 12]
-# user.problems_unsolved = [43, 44, 49]
-# user.submissions_stats = {
-#     2: 1,
-#     10: 2,
-#     12: 3,
-#     43: 4,
-#     44: 5,
-#     49: 6
-# }
-
-# user_data = [(123, 1, 1,), (124, 1, 1), (12312, 1, 1), (412321, 1, 1)]
 
 # <explanation>
 # Testing Recommendations for a user
@@ -46,11 +36,7 @@ user_data = [(1, 1, 1),
              (80, 2, 5),
              ]
 
-# engine.test to initialize engine and test it
-# engine.run to initialize and leave ready for input
-engine.test()
-# engine.run()
 # print(engine.data.users.keys())
-# print('start')
-# engine.execute_for_user(user_data)
+
+# Saving the engine
 # engine.save()

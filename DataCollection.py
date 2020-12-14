@@ -2,6 +2,8 @@ from Enums import SubmissionType, VerdictTypes
 import pandas as pd
 from Variables import Variables
 from Structs import User, SubmissionStats, ProblemStats
+from DataSource import DataSourceCsv
+import pickle
 from Enums import ImportMode
 
 
@@ -41,3 +43,12 @@ class Collection:
             elif status == VerdictTypes.fail.value or status == VerdictTypes.partially_solved.value:
                 problems[prob_id].attempts_before_fail.append(count)
         self.users = dict(filter(lambda user: len(user[1].problems_solved) >= Variables.user_solve_requirements, self.users.items()))
+
+
+def get_Collection(data_source):
+    if isinstance(data_source, DataSourceCsv):
+        result = Collection()
+        result.import_from_csv(data_source.file_path)
+        return result
+    else:
+        return None

@@ -68,3 +68,8 @@ class SubmissionType(Enum):
     unsolved_with_many = 3
     unsolved_with_few = 4
     solved_partially = 5
+
+
+class RunMode(Enum):
+    test = 1
+    run = 2

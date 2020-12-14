@@ -1,11 +1,12 @@
-from Enums import VotingStrategy, SimilarityStrategy, VerdictTypes
-from DataCollection import Collection
+from Enums import VotingStrategy, SimilarityStrategy, VerdictTypes, RunMode
+from DataCollection import Collection, get_Collection
 from Variables import Variables
 from DataTesting import Testing
 from DataProcessing import Preprocessing
 from DataCalculation import Calculator
 from Structs import User, SubmissionStats
-from DataSource import DataSourceCsv, DataSourcePickle, EnginePickle
+from DataSource import DataSourceCsv, EnginePickle
+from CustomLib import debug_timing
 import pickle
 import sys
 
@@ -24,27 +25,33 @@ class Engine:
 
     # Engine initialization:
     # Data, Variables, Calculator, Preprocessor
-    def __init__(self, data_source):
+    def __init__(self, data_source, mode):
         self.data = self.Data()
         Variables.path = data_source.file_path
         self.data.path = data_source.file_path
         self.testing = Testing(self)
         self.calculator = None
         self.preprocessor = None
-        self.initialize()
+        self.initialize(data_source)
+        if mode == RunMode.test:
+            self.testing.initialize_tests()
+        self.execute()
+        if mode == RunMode.test:
+            self.test()
+
 
     # Initialization method
     # Collection - Collects data:
     # problems, users and submissions data
     # Preprocessor - preprocesses the data
     # Calculator - calculates weights and recommendation list
-    def initialize(self):
-        data_collection = Collection()
-        data_collection.import_from_csv(self.data.path)
+    def initialize(self, data_source):
+        data_collection = get_Collection(data_source=data_source)
         self.data.users = data_collection.users
         self.data.problems = data_collection.problems
         self.calculator = Calculator(self.data)
         self.preprocessor = Preprocessing(self.data)
+        self.execute()
 
     # Returns the recommendation list for a user
     # Input - user data - list of tuples of form
@@ -57,7 +64,6 @@ class Engine:
                 user.submissions_stats[pid] = SubmissionStats(attempts=count)
         self.preprocessor.preprocess_user(user)
         self.calculator.calculate_user(user)
-        # print(self.data.users, self.data.problems)
         return user.recommendations
 
     # Train the model and calculate recommendation list for each user
@@ -66,33 +72,34 @@ class Engine:
         self.calculator.calculate()
 
     # Run mode - only train the model, no testing
-    def run(self):
+    # def run(self):
         # self.initialize()
-        self.execute()
+        # self.execute()
 
     # Test mode - train the model and test it
+    # @debug_timing
     def test(self):
         # Full test - for each Similarity strategy
         # and for each Voting strategy perform tests
         # Else do it only for the selected strategies
         full_test = False
+        # self.testing.initialize_tests()
         if full_test:
             for similarity in SimilarityStrategy:
                 for voting in VotingStrategy:
                     Variables.similarity_strategy = similarity
                     Variables.voting_strategy = voting
                     # self.testing.clear_aggregates()
-                    self.initialize()
-                    self.testing.initialize_tests()
-                    self.execute()
+                    # self.initialize()
+                    # self.execute()
                     self.testing.perform_test()
                     self.testing.print_results()
         else:
             Variables.similarity_strategy = SimilarityStrategy.jaccard_neighbours
             Variables.voting_strategy = VotingStrategy.weighted
             # self.initialize()
-            self.testing.initialize_tests()
-            self.execute()
+            # self.testing.initialize_tests()
+            # self.execute()
             self.testing.perform_test()
             self.testing.print_results()
             print(len(self.data.users), len(self.testing.users_test))
@@ -101,10 +108,15 @@ class Engine:
         with open(Variables.engine_pickle_file_name, 'wb') as pickle_file:
             pickle.dump(self, pickle_file)
 
-
-def get_engine(dataSource):
+@debug_timing
+def get_engine(dataSource, mode):
     if isinstance(dataSource, EnginePickle):
         with open(dataSource.file_path, 'rb') as pickle_file:
-            return pickle.load(pickle_file)
+            engine = pickle.load(pickle_file)
+            if mode == RunMode.test:
+                engine.testing.initialize_tests()
+                engine.execute()
+            return engine
     else:
-        return Engine(dataSource)
+        return Engine(dataSource, mode)
+
