@@ -2,6 +2,7 @@ from enum import Enum
 from timeit import default_timer as timer
 from datetime import timedelta
 
+
 def intersection_length(lst1, lst2):
     return len([val for val in lst1 if val in lst2])
 

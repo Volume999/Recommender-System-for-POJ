@@ -96,7 +96,7 @@ class Engine:
             print(len(self.data.users), len(self.testing.users_test))
 
     def save(self):
-        with open(Variables.engine_pickle_file_name, 'wb') as pickle_file:
+        with open(Variables.engine_pickle_file_name_5, 'wb') as pickle_file:
             pickle.dump(self, pickle_file)
 
 

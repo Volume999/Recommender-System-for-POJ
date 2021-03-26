@@ -19,14 +19,14 @@ class Collection:
         df = pd.read_csv(path,
                          header=0,
                          names=['id', 'user', 'status', 'count'])
-        for row in df.iterrows():
+        for row in df.iterrows():  # O(rows)
             prob_id = row[1][0]
             user = str(row[1][1])
             status = row[1][2]
             count = row[1][3]
             # if the number of attempts for a problem is more than 100
             # it is not considered
-            if user not in users.keys():
+            if user not in users.keys():  # O(1)
                 users[user] = User()
             if status == VerdictTypes.success.value:
                 users[user].problems_solved.append(prob_id)
@@ -42,7 +42,8 @@ class Collection:
                 problems[prob_id].attempts_before_success.append(count)
             elif status == VerdictTypes.fail.value or status == VerdictTypes.partially_solved.value:
                 problems[prob_id].attempts_before_fail.append(count)
-        self.users = dict(filter(lambda user: len(user[1].problems_solved) >= Variables.user_solve_requirements, self.users.items()))
+        self.users = dict(
+            filter(lambda user: len(user[1].problems_solved) >= Variables.user_solve_requirements, self.users.items()))
 
 
 def get_Collection(data_source):

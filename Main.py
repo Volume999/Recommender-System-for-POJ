@@ -4,14 +4,14 @@ from Enums import RunMode
 from CustomLib import debug_timing
 # Recommendation list size
 
-TOP_N = [15]
+# TOP_N = [15]
 
 
 # Engine initialization
 data_source = DataSourceCsv(file_path="/Users/citius/Desktop/Study/SeniorThesisWork/OlympSubmissions.csv")
 engine_source = EnginePickle(file_path="Engine.pickle")
 mode = RunMode.run
-engine = get_engine(data_source, mode)
+engine = get_engine(engine_source, mode)
 # end of initialization
 
 # <explanation>
@@ -30,7 +30,7 @@ user_data = [(1, 1, 1),
              (80, 2, 5),
              ]
 
-print(engine.data.users.keys())
+# print(engine.data.users.keys())
 
 # Saving the engine
 # engine.save()

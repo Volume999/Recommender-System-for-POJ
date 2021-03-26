@@ -25,4 +25,5 @@ class Variables:
     # path - path to CSV
     path = str()
     #engine_pickle_file_name - file name of saved engine
-    engine_pickle_file_name = 'Engine.pickle'
+    engine_pickle_file_name_5 = 'Engine.pickle'
+    engine_pickle_file_name_15 = 'Engine2.pickle'
