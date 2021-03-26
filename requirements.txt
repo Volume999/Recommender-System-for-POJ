@@ -7,11 +7,10 @@ Flask-Uploads==0.2.1
 googletrans==2.4.0
 idna==2.9
 itsdangerous==1.1.0
-Jinja2==2.11.2
+Jinja2==2.11.3
 MarkupSafe==1.1.1
 numpy==1.18.2
 pandas==1.0.5
-Pillow==8.0.1
 pyjokes==0.6.0
 python-dateutil==2.8.1
 python-resize-image==1.1.19
