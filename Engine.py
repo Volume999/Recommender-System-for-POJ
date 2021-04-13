@@ -47,6 +47,12 @@ class Engine:
         data_collection = get_Collection(data_source=data_source)
         self.data.users = data_collection.users
         self.data.problems = data_collection.problems
+        # print('Users:', len(data_collection.users))
+        # print('Problems:', len(data_collection.problems))
+        # submissions = 0
+        # for user in data_collection.users:
+        #     submissions += len(data_collection.users[user].submissions_stats)
+        # print('Submissions:', submissions)
         self.calculator = Calculator(self.data)
         self.preprocessor = Preprocessing(self.data)
 
@@ -93,7 +99,8 @@ class Engine:
             Variables.voting_strategy = VotingStrategy.weighted
             self.testing.perform_test()
             self.testing.print_results()
-            print(len(self.data.users), len(self.testing.users_test))
+            # print("Users:", len(self.data.users))
+            # print("Users qualified for testing:", len(self.testing.users_test))
 
     def save(self):
         with open(Variables.engine_pickle_file_name_5, 'wb') as pickle_file:
@@ -106,7 +113,7 @@ def get_engine(dataSource, mode):
         with open(dataSource.file_path, 'rb') as pickle_file:
             engine = pickle.load(pickle_file)
             if mode == RunMode.test:
-                engine.testing.initialize_tests()
+                # engine.testing.initialize_tests()
                 engine.execute()
                 engine.test()
             return engine

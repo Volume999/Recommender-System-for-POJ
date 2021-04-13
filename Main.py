@@ -8,10 +8,10 @@ from CustomLib import debug_timing
 
 
 # Engine initialization
-data_source = DataSourceCsv(file_path="/Users/citius/Desktop/Study/SeniorThesisWork/OlympSubmissions.csv")
+data_source = DataSourceCsv(file_path="/Users/citius/Desktop/Study/SeniorThesisWork/OlympSubmissions2.csv")
 engine_source = EnginePickle(file_path="Engine.pickle")
 mode = RunMode.run
-engine = get_engine(engine_source, mode)
+engine = get_engine(data_source, mode)
 # end of initialization
 
 # <explanation>

@@ -4,11 +4,12 @@ import CustomLib
 from Variables import Variables
 import statistics
 
+
 # Logic for testing
 class Testing:
     # You need to have 2 * test_solve_requirements amounts of problems solved
     # to be considered for recommendations
-    test_solve_requirement = 5
+    test_solve_requirement = 6
 
     # TO DO: CHECK IF f1_agg, recall_agg, p_agg, one_hit_agg, mrr_agg
     # need to be lists or should be
@@ -63,7 +64,8 @@ class Testing:
         self.precision /= len(tests)
         self.recall /= len(tests)
         self.one_hit /= len(tests)
-        self.f1 = 2 * self.precision * self.recall / (self.precision + self.recall) if self.precision + self.recall != 0 else 0
+        self.f1 = 2 * self.precision * self.recall / (
+                    self.precision + self.recall) if self.precision + self.recall != 0 else 0
 
     def print_results(self):
         # Printing the results
@@ -87,7 +89,7 @@ class Testing:
         # Divide his submissions in half, use one for training and one for
         # Testing
         for user in users:
-            if len(users[user].problems_solved) >= self.test_solve_requirement * 2:
+            if len(users[user].problems_solved) >= self.test_solve_requirement:
                 self.users_test[user] = set()
                 random.Random(228).shuffle(users[user].problems_solved)
                 users[user].problems_solved, self.users_test[user] = CustomLib.split_in_half(

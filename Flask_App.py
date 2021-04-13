@@ -23,8 +23,6 @@ def execute_user(name):
 @app.route('/newuser', methods=['POST'])
 def newuser():
     data = json.loads(request.get_json())
-    print(data)
-    print([(p, v, t) for [p, v, t] in data])
     return jsonify(dict(engine.execute_for_user(data)))
 
 
