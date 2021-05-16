@@ -91,7 +91,7 @@ class Testing:
         for user in users:
             if len(users[user].problems_solved) >= self.test_solve_requirement:
                 self.users_test[user] = set()
-                random.Random(228).shuffle(users[user].problems_solved)
+                # random.Random(228).shuffle(users[user].problems_solved)
                 users[user].problems_solved, self.users_test[user] = CustomLib.split_in_half(
                     users[user].problems_solved)
                 for prob in self.users_test[user]:
